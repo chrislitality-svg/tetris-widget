@@ -104,7 +104,8 @@ const DEFAULT_SETTINGS = {
   softDropMs: 25,      // ms per cell while soft dropping
   lockDelayMs: 500,    // grounded grace period before lock
   lockResetCap: 15,    // max move/rotate lock-delay resets (infinity guard)
-  autoPauseOnBlur: true
+  autoPauseOnBlur: true,
+  aiDebug: false       // AI decision-visualization overlay (toggle: G)
 };
 
 const AI_STEP_MS = 30; // how often the AI performs one alignment step
@@ -271,6 +272,7 @@ let wasAutoPaused = false;
 
 // AI
 let aiPlan = null;
+let aiPlanDebug = null;
 
 // juice
 let clearText = '';
@@ -297,7 +299,7 @@ function init() {
   loadConfigAsync().then(() => {
     sizeKey = CANVAS_SIZES[config.size] ? config.size : 'medium';
     speedKey = SPEEDS[config.speed] ? config.speed : 'normal';
-    aiMode = [0, 1, 2].includes(config.aiMode) ? config.aiMode : 0;
+    aiMode = [0, 1, 2, 3].includes(config.aiMode) ? config.aiMode : 0;
     highScore = config.highScore || 0;
     if (config.settings) settings = Object.assign({}, DEFAULT_SETTINGS, config.settings);
 
@@ -335,9 +337,10 @@ function bindControls() {
   };
 
   wire('aiBtn', () => {
-    aiMode = (aiMode + 1) % 3;
+    aiMode = (aiMode + 1) % 4; // 手动 → 弱 → 普通 → 变态
     applyAIMode(aiMode);
     aiPlan = null;
+    aiPlanDebug = null;
     saveConfig();
   });
   wire('sizeBtn', () => {
@@ -367,6 +370,13 @@ function bindKeyboard() {
     if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
       e.preventDefault();
       togglePause();
+      return;
+    }
+    if (e.key === 'g' || e.key === 'G') { // toggle AI decision-visualization overlay
+      e.preventDefault();
+      settings.aiDebug = !settings.aiDebug;
+      saveConfig();
+      draw();
       return;
     }
     if (paused) return;
@@ -458,9 +468,12 @@ function applyAIMode(mode) {
   aiMode = mode;
   const btn = document.getElementById('aiBtn');
   btn.classList.remove('active', 'active-fast');
-  if (aiMode === 1) { btn.classList.add('active'); btn.textContent = 'AI'; }
-  else if (aiMode === 2) { btn.classList.add('active-fast'); btn.textContent = 'AI+'; }
-  else { btn.textContent = 'AI'; }
+  const labels = { 0: 'AI', 1: '弱', 2: '普', 3: '变' };
+  const titles = { 0: 'AI 自动运行（点击切换难度）', 1: '弱鸡', 2: '普通', 3: '变态' };
+  btn.textContent = labels[aiMode] || 'AI';
+  btn.title = titles[aiMode] || 'AI';
+  if (aiMode === 1 || aiMode === 2) btn.classList.add('active');
+  else if (aiMode === 3) btn.classList.add('active-fast');
 }
 
 function saveConfig() {
@@ -634,6 +647,7 @@ function spawnPiece(typeOverride) {
   lockResets = 0;
   lowestRow = bottomRowOf(currentPiece);
   aiPlan = null;
+  aiPlanDebug = null;
 
   if (collidesAt(board, type, 0, currentPiece.row, currentPiece.col)) {
     endGame(); // block-out
@@ -643,10 +657,6 @@ function spawnPiece(typeOverride) {
 // ===================== 方块操作 =====================
 function getShape(piece) {
   return SHAPES[piece.type][piece.rotation];
-}
-
-function collides(piece) {
-  return collidesAt(board, piece.type, piece.rotation, piece.row, piece.col);
 }
 
 function grounded() {
@@ -824,193 +834,28 @@ function clearAutoRestart() {
   }
 }
 
-// ===================== AI（Phase 1 仅适配新循环；强化见 Phase 2） =====================
+// ===================== AI（接入共享 El-Tetris 引擎 ai.js） =====================
+const AI_TIERS = [null, 'weak', 'normal', 'insane']; // 按 aiMode 索引（0=手动）
+
 function aiStep() {
-  if (!currentPiece) return;
+  if (!currentPiece || typeof TetrisAI === 'undefined') return;
   if (!aiPlan) {
-    aiPlan = getAIAction();
+    aiPlan = TetrisAI.chooseMove(board, currentPiece.type, [nextType], holdType, {
+      shapes: SHAPES,
+      tier: AI_TIERS[aiMode] || 'normal',
+      canHold
+    });
     if (!aiPlan) { hardDrop(); return; }
+    aiPlanDebug = aiPlan;
+    if (aiPlan.useHold && canHold) { holdPiece(); aiPlan = null; return; }
   }
+  // Reach the planned orientation/column (rotation at spawn is in open space, so
+  // no kick shifts the column), then hard drop — matches the benchmark's placement.
   if (currentPiece.rotation !== aiPlan.rotation) { rotate(1); return; }
   if (currentPiece.col < aiPlan.col) { move(0, 1); return; }
   if (currentPiece.col > aiPlan.col) { move(0, -1); return; }
   hardDrop();
   aiPlan = null;
-}
-
-function getAIAction() {
-  if (!currentPiece) return null;
-  if (aiMode === 1) return getBestAction1Step();
-  if (aiMode === 2) return getBestAction2Step();
-  return null;
-}
-
-function getBestAction1Step() {
-  const piece = currentPiece;
-  const info = CANVAS_SIZES[sizeKey];
-  let bestScore = -Infinity;
-  let bestAction = null;
-  for (let rot = 0; rot < 4; rot++) {
-    const shape = SHAPES[piece.type][rot];
-    const width = shape[0].length;
-    for (let col = 0; col <= info.width - width; col++) {
-      let row = 0;
-      while (row < info.height) {
-        if (collides({ type: piece.type, rotation: rot, row: row + 1, col })) break;
-        row++;
-      }
-      const test = { type: piece.type, rotation: rot, row, col };
-      if (test.row < 0) continue;
-      const simBoard = simulatePlacement(test);
-      if (!simBoard) continue;
-      const sc = evaluateBoard(simBoard);
-      const linesCleared = countLinesForPlacement(test);
-      const totalScore = sc + linesCleared * 200;
-      if (totalScore > bestScore) {
-        bestScore = totalScore;
-        bestAction = { rotation: rot, col, row };
-      }
-    }
-  }
-  return bestAction;
-}
-
-function getBestAction2Step() {
-  const piece = currentPiece;
-  const nextT = nextType;
-  const info = CANVAS_SIZES[sizeKey];
-  let bestScore = -Infinity;
-  let bestAction = null;
-  for (let rot = 0; rot < 4; rot++) {
-    const shape = SHAPES[piece.type][rot];
-    const width = shape[0].length;
-    for (let col = 0; col <= info.width - width; col++) {
-      let row = 0;
-      while (row < info.height) {
-        if (collides({ type: piece.type, rotation: rot, row: row + 1, col })) break;
-        row++;
-      }
-      const test = { type: piece.type, rotation: rot, row, col };
-      if (test.row < 0) continue;
-      const simBoard = simulatePlacement(test);
-      if (!simBoard) continue;
-
-      let nextBest = -Infinity;
-      for (let rot2 = 0; rot2 < 4; rot2++) {
-        const shape2 = SHAPES[nextT][rot2];
-        const width2 = shape2[0].length;
-        for (let col2 = 0; col2 <= info.width - width2; col2++) {
-          let row2 = 0;
-          while (row2 < info.height) {
-            if (collidesWithBoard({ type: nextT, rotation: rot2, row: row2 + 1, col: col2 }, simBoard)) break;
-            row2++;
-          }
-          const test2 = { type: nextT, rotation: rot2, row: row2, col: col2 };
-          if (test2.row < 0) continue;
-          const simBoard2 = simulatePlacementOnBoard(test2, simBoard);
-          if (!simBoard2) continue;
-          const sc2 = evaluateBoard(simBoard2);
-          const linesCleared2 = countLinesClearedOnBoard(test2, simBoard);
-          nextBest = Math.max(nextBest, sc2 + linesCleared2 * 200);
-        }
-      }
-
-      const currentScore = evaluateBoard(simBoard);
-      const currentLines = countLinesForPlacement(test);
-      const totalScore = currentScore + currentLines * 200 + (nextBest > -Infinity ? nextBest * 0.5 : 0);
-      if (totalScore > bestScore) {
-        bestScore = totalScore;
-        bestAction = { rotation: rot, col, row };
-      }
-    }
-  }
-  return bestAction;
-}
-
-function simulatePlacement(piece) {
-  return simulatePlacementOnBoard(piece, board);
-}
-
-function collidesWithBoard(piece, boardData) {
-  return collidesAt(boardData, piece.type, piece.rotation, piece.row, piece.col);
-}
-
-function simulatePlacementOnBoard(piece, boardData) {
-  const info = CANVAS_SIZES[sizeKey];
-  const sim = boardData.map(row => [...row]);
-  const shape = SHAPES[piece.type][piece.rotation];
-  for (let r = 0; r < shape.length; r++) {
-    for (let c = 0; c < shape[r].length; c++) {
-      if (!shape[r][c]) continue;
-      const br = piece.row + r;
-      const bc = piece.col + c;
-      if (br < 0 || br >= info.height || bc < 0 || bc >= info.width) return null;
-      sim[br][bc] = true;
-    }
-  }
-  for (let r = sim.length - 1; r >= 0; r--) {
-    if (sim[r].every(cell => cell != null)) {
-      sim.splice(r, 1);
-      sim.unshift(new Array(info.width).fill(null));
-      r++;
-    }
-  }
-  return sim;
-}
-
-function evaluateBoard(boardData) {
-  if (!boardData || boardData.length === 0) return -999999;
-  const H = boardData.length;
-  const W = boardData[0].length;
-  const heights = [];
-  let totalHeight = 0;
-  for (let c = 0; c < W; c++) {
-    let h = 0;
-    for (let r = 0; r < H; r++) {
-      if (boardData[r][c] != null) { h = H - r; break; }
-    }
-    heights.push(h);
-    totalHeight += h;
-  }
-  let holes = 0;
-  for (let c = 0; c < W; c++) {
-    let blocked = false;
-    for (let r = 0; r < H; r++) {
-      if (boardData[r][c] != null) blocked = true;
-      else if (blocked) holes++;
-    }
-  }
-  let bumpiness = 0;
-  for (let c = 0; c < W - 1; c++) bumpiness += Math.abs(heights[c] - heights[c + 1]);
-  const maxHeight = Math.max(...heights, 0);
-  return -0.5 * totalHeight - 1.5 * holes - 0.75 * bumpiness - 0.5 * maxHeight;
-}
-
-function countLinesOnBoard(boardData) {
-  let count = 0;
-  for (let r = 0; r < boardData.length; r++) {
-    if (boardData[r].every(cell => cell != null)) count++;
-  }
-  return count;
-}
-
-function countLinesForPlacement(placement) {
-  return countLinesClearedOnBoard(placement, board);
-}
-
-function countLinesClearedOnBoard(placement, boardData) {
-  const info = CANVAS_SIZES[sizeKey];
-  const sim = boardData.map(row => [...row]);
-  const shape = SHAPES[placement.type][placement.rotation];
-  for (let r = 0; r < shape.length; r++) {
-    for (let c = 0; c < shape[r].length; c++) {
-      if (!shape[r][c]) continue;
-      const br = placement.row + r;
-      const bc = placement.col + c;
-      if (br >= 0 && br < info.height && bc >= 0 && bc < info.width) sim[br][bc] = true;
-    }
-  }
-  return countLinesOnBoard(sim);
 }
 
 // ===================== 绘制 =====================
@@ -1052,6 +897,7 @@ function draw() {
   if (gameOver) drawOverlay(ctx, canvas.width, canvas.height, '游戏结束');
   else if (paused && currentPiece) drawOverlay(ctx, canvas.width, canvas.height, '已暂停');
 
+  if (settings.aiDebug && aiMode !== 0 && aiPlanDebug) drawAIDebug();
   drawClearText();
   drawPreview(holdCtx, holdCanvas, holdType, !canHold);
   drawPreview(nextCtx, nextCanvas, nextType, false);
@@ -1105,6 +951,34 @@ function drawOverlay(context, w, h, text) {
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillText(text, w / 2, h / 2);
+}
+
+function drawAIDebug() {
+  // Planned landing footprint (outline), if the plan is a placement (not a hold).
+  if (!aiPlanDebug.useHold && currentPiece &&
+      !collidesAt(board, currentPiece.type, aiPlanDebug.rotation, currentPiece.row, aiPlanDebug.col)) {
+    const piece = { type: currentPiece.type, rotation: aiPlanDebug.rotation, row: currentPiece.row, col: aiPlanDebug.col };
+    const gr = piece.row + dropDistance(board, piece);
+    const shape = SHAPES[piece.type][piece.rotation];
+    ctx.save();
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 2;
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (shape[r][c]) ctx.strokeRect((piece.col + c) * CELL_PX + 1, (gr + r) * CELL_PX + 1, CELL_PX - 2, CELL_PX - 2);
+      }
+    }
+    ctx.restore();
+  }
+  const f = aiPlanDebug.features || {};
+  const txt = `${AI_TIERS[aiMode] || ''} holes:${f.holes != null ? f.holes : '-'} sc:${Math.round(aiPlanDebug.score || 0)}`;
+  ctx.save();
+  ctx.fillStyle = 'rgba(253,230,138,0.95)';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(txt, 3, 3);
+  ctx.restore();
 }
 
 function drawClearText() {

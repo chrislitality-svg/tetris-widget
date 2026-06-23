@@ -89,11 +89,11 @@ async function run() {
   })();`);
   await shot('C_tspin_setup.png');
 
-  // ---- Scenario D: AI + real loop — let AI+ play, then read progress ----
-  await evaljs(`(function(){ aiMode=2; applyAIMode(2); resetGame(); startLoop(); return 'ai-started'; })();`);
-  await wait(3000);
-  results.D = await evaljs(`(function(){ return JSON.stringify({ aiLines:lines, aiScore:score, hasCurrent:!!currentPiece, gameOver:gameOver }); })();`);
-  await shot('D_ai_playing.png');
+  // ---- Scenario D: AI + real loop — insane tier with decision overlay ----
+  await evaljs(`(function(){ settings.aiDebug=true; aiMode=3; applyAIMode(3); resetGame(); startLoop(); return 'ai-started'; })();`);
+  await wait(3500);
+  results.D = await evaljs(`(function(){ return JSON.stringify({ tier:(typeof AI_TIERS!=='undefined'?AI_TIERS[aiMode]:String(aiMode)), aiLines:lines, aiScore:score, hasCurrent:!!currentPiece, gameOver:gameOver, debugOn:settings.aiDebug }); })();`);
+  await shot('D_ai_insane_debug.png');
 
   console.log('VERIFY_RESULTS=' + JSON.stringify(results));
   await wait(200);
