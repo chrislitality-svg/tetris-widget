@@ -83,4 +83,15 @@ tick()
 - **AI 偏弱**：基准实测 aiMode=1 ≈ 4 行/局、aiMode=2 ≈ 7 行/局即死；基准里"改进版" `CompleteHeuristic` 反而 0 行（权重 bug）。Phase 2 ROI 极高。
 - **隐身地基已有**：透明 + 无边框 + 置顶 + 跳过任务栏；Phase 3 多为「在 main.js 增量加 IPC + globalShortcut + setIgnoreMouseEvents + Tray」。
 - **代码整洁、零运行时依赖、易于增量改造**；改造主要集中在 `tetris.js` 与 `main.js`。
+
+## 改造后结构变化（Phase 1–4）
+
+> 上文是 Phase 0 的「现状」快照；Phase 1–4 完成后的新增/变化：
+
+- 新增 `renderer/ai.js`：同构的共享 AI 引擎（El-Tetris 评估 + beam/hold + 难度档位），实机与 `benchmark_ai.js` 共用。
+- 新增 `renderer/disguise.html`：老板键弹出的伪装 VS Code 编辑器（独立窗口）。
+- 新增 `test/`（`core.test.js` + `ai.test.js`，node 纯逻辑单测）、`tools/`（`verify_visual.js` 截图/插桩验证、`verify_window.js` 窗口原语验证）。
+- `renderer/tetris.js` 改为**固定步长循环**；棋盘单元格现存**方块类型字母**（draw 时按主题取色，支持即时换肤与脏行 `G`）；纯逻辑段可被 node `require` 单测。
+- `main.js` 扩出窗口/隐身层（globalShortcut/Tray/setOpacity/setIgnoreMouseEvents/伪装窗口/边界夹取/配置白名单）。
+- 配置持久化新增键：`settings`（含键位/手感/隐身/主题/静音）、`mode`、`records`（排行榜）、`achievements`。
 ```

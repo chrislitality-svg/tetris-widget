@@ -3,7 +3,7 @@
 一个 Electron 桌面悬浮俄罗斯方块小程序（无边框 / 透明 / 置顶），带启发式 AI 自动演示。
 本仓库是在 `hamletzhang/tetris-widget` 基础上的增强 fork，目标是**手感不丢、AI 更聪明、能摸鱼、玩法更丰富**。fork 来源与许可见 [NOTICE.md](NOTICE.md)。
 
-> 改造分 Phase 推进。**Phase 1（手感）、Phase 2（AI）、Phase 3（隐身/摸鱼）已完成**；Phase 4（趣味）规划见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
+> 改造分 Phase 推进，**Phase 1（手感）、Phase 2（AI）、Phase 3（隐身/摸鱼）、Phase 4（趣味）已全部完成**。审计与进度见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 已实现（Phase 1）
 
@@ -86,6 +86,17 @@ AI 模式下游戏结束 5 秒后自动重开（适合当桌面演示）。按 *
 | 显示 / 隐藏 | `Ctrl+Alt+H` |
 | 鼠标穿透 | `Ctrl+Alt+T` |
 | Mini 模式 | `Ctrl+Alt+M` |
+
+## 玩法 / 趣味（Phase 4）
+
+- **游戏模式**（设置面板「游戏模式」切换）：马拉松、Sprint40（消 40 行计时）、Ultra（2 分钟刷分）、Zen（不会结束）、Cheese（清脏行求生）、每日挑战（按日期种子，每天同一套方块顺序）。
+- **本地排行榜**：各模式独立记录最佳（分数 / 时间 / 行数），持久化，显示在信息栏「最佳」。
+- **主题**：经典 / 极简 / 霓虹 / 马卡龙 四套配色，即时切换（连已落方块一起换色）；可经设置导入/导出自定义配色。
+- **手感反馈（juice）**：消行震屏 + 闪光 + 粒子、升级闪光、消行类型提示（SINGLE/TETRIS/T-SPIN/B2B/COMBO）。克制，不糊脸。
+- **音效**：WebAudio 合成（无版权素材），**默认静音**，设置里开。
+- **成就**：8 个（首次 Tetris / T-Spin、5 连击、10 级、百行、Sprint 破 60 秒、完成 Ultra、3 连难度消除），解锁有提示并持久化，设置面板可查看。
+
+> 联机对战 / 在线排行按需求不做；分屏 vs-AI 与回放录制按 ROI 推迟（见 KNOWN_ISSUES）。
 
 ## 构建与运行
 
