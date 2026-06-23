@@ -114,7 +114,11 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      devTools: true
+      // Keep the fixed-timestep game loop running smoothly even when the
+      // widget is unfocused / occluded (it is a background "moyu" overlay).
+      backgroundThrottling: false,
+      // Disable DevTools in the packaged build (stealth hardening); keep it in dev.
+      devTools: !app.isPackaged
     }
   });
 
