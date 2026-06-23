@@ -6,7 +6,9 @@
   "author": "Kimi User",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win"
+    "build": "electron-builder --win",
+    "test": "node test/core.test.js",
+    "verify": "electron tools/verify_visual.js"
   },
   "build": {
     "appId": "com.kimi.tetris-widget",
