@@ -1,0 +1,35 @@
+{
+  "name": "tetris-widget",
+  "version": "1.0.0",
+  "description": "像素风俄罗斯方块桌面悬浮小程序（支持启发式 AI）",
+  "main": "main.js",
+  "author": "Kimi User",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.kimi.tetris-widget",
+    "productName": "俄罗斯方块",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "icon.ico"
+    },
+    "portable": {
+      "artifactName": "俄罗斯方块-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  }
+}

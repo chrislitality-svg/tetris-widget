@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+  <title>俄罗斯方块</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="widget-container">
+    <div class="top-actions">
+      <button class="icon-btn" id="aiBtn" title="AI 自动运行">AI</button>
+      <button class="icon-btn" id="sizeBtn" title="切换尺寸">⊡</button>
+      <button class="icon-btn" id="speedBtn" title="切换速度">⚡</button>
+      <button class="icon-btn" id="playBtn" title="开始/暂停">▶</button>
+      <button class="icon-btn" id="restartBtn" title="重新开始">↻</button>
+      <button class="icon-btn close-btn" id="closeBtn" title="退出">×</button>
+    </div>
+
+    <div class="game-area">
+      <div class="canvas-wrap">
+        <canvas id="gameCanvas"></canvas>
+      </div>
+      <div class="side-panel">
+        <div class="next-label">下一个</div>
+        <div class="next-wrap">
+          <canvas id="nextCanvas"></canvas>
+        </div>
+        <div class="info-box">
+          <div class="info-row"><span class="info-key">分数</span><span class="info-val" id="scoreText">0</span></div>
+          <div class="info-row"><span class="info-key">等级</span><span class="info-val" id="levelText">1</span></div>
+          <div class="info-row"><span class="info-key">行数</span><span class="info-val" id="linesText">0</span></div>
+          <div class="info-row"><span class="info-key">最高</span><span class="info-val" id="highScoreText">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="tetris.js"></script>
+</body>
+</html>
