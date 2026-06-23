@@ -341,6 +341,12 @@ let flashUntil = 0;
 let particles = [];
 let audioCtx = null;
 
+// achievements
+let unlockedAch = new Set();
+let b2bStreak = 0;
+let achText = '';
+let achUntil = 0;
+
 // ===================== 初始化 =====================
 function init() {
   canvas = document.getElementById('gameCanvas');
@@ -369,6 +375,7 @@ function init() {
     settings.globalHotkeys = Object.assign({}, DEFAULT_SETTINGS.globalHotkeys, settings.globalHotkeys || {});
     applyTheme(settings.theme);
     records = config.records || {};
+    unlockedAch = new Set(config.achievements || []);
     mode = MODES[config.mode] ? config.mode : 'marathon';
 
     applySize(sizeKey, false);
@@ -555,7 +562,8 @@ function saveConfig() {
     highScore,
     settings,
     mode,
-    records
+    records,
+    achievements: [...unlockedAch]
   }).catch(() => {});
 }
 
@@ -695,6 +703,7 @@ function resetGame() {
   lines = 0;
   combo = -1;
   b2b = false;
+  b2bStreak = 0;
   holdType = null;
   canHold = true;
   clearText = '';
@@ -886,6 +895,7 @@ function applyScore(cleared, tSpin) {
   }
 
   setClearText(cleared, tSpin, b2bApplied);
+  checkGameplayAchievements(cleared, tSpin, res.difficult);
 
   if (score > highScore) {
     highScore = score;
@@ -914,6 +924,8 @@ function endGame() {
   playSound('over');
   if (score > highScore) highScore = score;
   updateModeRecord();
+  if (mode === 'ultra' && gameWon) unlockAch('ultra_done');
+  if (mode === 'sprint' && gameWon && modeElapsedMs < 60000) unlockAch('sprint_sub60');
   saveConfig();
   if (aiMode !== 0) scheduleAutoRestart();
 }
@@ -1019,6 +1031,7 @@ function draw() {
 
   if (settings.aiDebug && aiMode !== 0 && aiPlanDebug) drawAIDebug();
   drawClearText();
+  drawAchToast();
   drawPreview(holdCtx, holdCanvas, holdType, !canHold);
   drawPreview(nextCtx, nextCanvas, nextType, false);
 }
@@ -1219,6 +1232,7 @@ function openSettings() {
   syncSettingsUI();
   renderKeybindList();
   renderModeButtons();
+  renderAchievements();
   panel.classList.remove('hidden');
 }
 
@@ -1587,6 +1601,74 @@ function renderModeButtons() {
     b.textContent = MODES[m].name;
     b.addEventListener('click', () => { setMode(m); renderModeButtons(); closeSettings(); });
     box.appendChild(b);
+  }
+}
+
+// ===================== 成就 =====================
+const ACHIEVEMENTS = [
+  { id: 'first_tetris', name: '四连消', desc: '完成一次 Tetris' },
+  { id: 'first_tspin', name: 'T-Spin', desc: '完成一次 T-Spin 消行' },
+  { id: 'combo5', name: '连击大师', desc: '达成 5 连击' },
+  { id: 'level10', name: '十级', desc: '达到 10 级' },
+  { id: 'lines100', name: '百行', desc: '单局消除 100 行' },
+  { id: 'sprint_sub60', name: '闪电40', desc: 'Sprint 40 行用时 < 60 秒' },
+  { id: 'ultra_done', name: '两分钟', desc: '完成一局 Ultra' },
+  { id: 'b2b3', name: '连战连捷', desc: '连续 3 次难度消除（B2B）' }
+];
+
+function unlockAch(id) {
+  if (unlockedAch.has(id)) return;
+  unlockedAch.add(id);
+  const a = ACHIEVEMENTS.find(x => x.id === id);
+  achText = '成就达成 · ' + (a ? a.name : id);
+  achUntil = nowMs() + 2600;
+  playSound('levelup');
+  saveConfig();
+}
+
+function checkGameplayAchievements(cleared, tSpin, difficult) {
+  if (cleared === 4) unlockAch('first_tetris');
+  if (tSpin !== 'none' && cleared > 0) unlockAch('first_tspin');
+  if (combo >= 5) unlockAch('combo5');
+  if (level >= 10) unlockAch('level10');
+  if (lines >= 100) unlockAch('lines100');
+  if (cleared > 0) {
+    if (difficult) b2bStreak++; else b2bStreak = 0;
+    if (b2bStreak >= 3) unlockAch('b2b3');
+  }
+}
+
+function drawAchToast() {
+  const now = nowMs();
+  if (!achText || now >= achUntil) return;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, (achUntil - now) / 700));
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, canvas.height - 34, canvas.width, 22);
+  ctx.fillStyle = '#fde68a';
+  ctx.font = 'bold 11px Microsoft YaHei, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(achText, canvas.width / 2, canvas.height - 23);
+  ctx.restore();
+}
+
+function renderAchievements() {
+  const box = document.getElementById('achList');
+  if (!box) return;
+  box.innerHTML = '';
+  for (const a of ACHIEVEMENTS) {
+    const got = unlockedAch.has(a.id);
+    const row = document.createElement('div');
+    row.className = 'ach-row' + (got ? ' got' : '');
+    const name = document.createElement('span');
+    name.className = 'ach-name';
+    name.textContent = (got ? '★ ' : '☆ ') + a.name;
+    const desc = document.createElement('span');
+    desc.className = 'ach-desc';
+    desc.textContent = a.desc;
+    row.appendChild(name); row.appendChild(desc);
+    box.appendChild(row);
   }
 }
 

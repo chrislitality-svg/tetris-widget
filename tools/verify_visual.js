@@ -138,6 +138,16 @@ async function run() {
   } catch(e){ return JSON.stringify({ ok:false, error:String(e&&e.stack||e) }); } })();`);
   await shot('H_tetris_juice.png');
 
+  // ---- Scenario I: achievements (H already did 2 Tetrises -> first_tetris) ----
+  results.I = await evaljs(`(function(){ try {
+    unlockAch('combo5'); // also unlock one explicitly
+    openSettings();
+    const p = document.getElementById('settingsPanel'); if (p) p.scrollTop = p.scrollHeight; // scroll to the achievements list
+    return JSON.stringify({ ok:true, unlocked: [...unlockedAch], total: ACHIEVEMENTS.length, achRows: document.getElementById('achList').children.length });
+  } catch(e){ return JSON.stringify({ ok:false, error:String(e&&e.stack||e) }); } })();`);
+  await wait(250);
+  await shot('I_achievements.png');
+
   console.log('VERIFY_RESULTS=' + JSON.stringify(results));
   await wait(200);
   win.destroy();
