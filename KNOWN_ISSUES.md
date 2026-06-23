@@ -14,6 +14,18 @@
 
 ---
 
+## ✅ Phase 1 完成情况（commit 854e050 / 4bc444a）
+
+**已修复（19 条）**：旋转 4 条（SRS 踢墙表 + CW/CCW + lastMove，单测含贴地/贴墙 kick）、lock delay/循环 4 条（固定步长循环 + 500ms 锁定 + 移动重置封顶 + gravityMs 集中化 + 暂停定时器/dropCounter/切速度）、输入 5 条（DAS/ARR + preventDefault + 失焦自动暂停 + AI 锁键 + 暂停重绘）、随机器/hold 4 条（7-bag + hold + 致死块渲染 + 去废 rotation 字段）、计分 5 条（软/硬降 + ×等级 + combo + B2B + T-spin）、`first-tick-ignores-level-gravity`。
+
+**验证**：`npm test` 30/30 通过（纯逻辑）；`npm run verify` 离屏实测——A 手动(hold=L/score=160)、B 贴右墙竖 I 旋转踢墙至 col6、C T 槽内 detectTSpin='full'、D AI+ 真循环 3s 清 6 行/1348 分。截图见 verify_shots/。
+
+**Phase 1 内推迟（低优先，附原因）**：
+- `topout-block-out-only-no-lock-out` / `no-vanish-buffer-zone`：保留 block-out（已校验终局可靠），真·lock-out + 缓冲行属一次性重构，推迟。
+- `level-gravity-formula-weak` / `gravity-curve-tied-to-speed-base-and-linear`：gravityMs 已集中化、首拍不一致已修；线性曲线 + 50ms 下限的**平滑化**属手感调参，并入 Phase 3 设置面板一起做（避免现在擅自改既有节奏手感）。
+
+---
+
 ## Phase 1 — 手感与 Bug（最高优先：恢复「Tetris 的灵魂」）
 
 ### 🔴/🟠 旋转系统（无 SRS / 无 wall-kick）—— 4 条，一次重构统一修复
