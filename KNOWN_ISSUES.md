@@ -117,6 +117,12 @@
 
 ## Phase 3 — 隐身 / 摸鱼（核心卖点；Windows + Electron，几何地基已具备）
 
+> **✅ Phase 3 完成（commit 3409063 / 5274683）**：老板键（全局 `Ctrl+Alt+B`）→ 隐藏游戏 + 弹出**伪装 VS Code 编辑器**；鼠标穿透（`setIgnoreMouseEvents`，`Ctrl+Alt+T`）；透明度滑杆（`setOpacity`，最低 10%）；系统托盘（显示/隐藏/老板键/穿透/Mini/退出）；Mini 模式（`Ctrl+Alt+M`，缩成棋盘小窗）；全局热键（`globalShortcut`，可改）；**设置面板**（全键位重绑 + DAS/ARR/锁定延迟 + 各开关 + 自定义标题 + 导入/导出/恢复默认，全部持久化）；失焦自动暂停/自动隐藏；窗口越界夹取 + `save-config` 白名单 + 移除默认菜单。
+> **验证**：`tools/verify_window.js` 实测 setOpacity/setIgnoreMouseEvents/Tray/globalShortcut.register 全部 OK + 伪装窗口截图；`verify_visual` 截设置面板（8 键位行）+ Mini 模式；真实 `npm start` 零报错。
+> **降级/暂缓**：全局**移动键**（上下左右等游戏键的系统级注册）默认不开——系统级注册会全局劫持这些键，干扰正常打字；老板键/显示隐藏/穿透/Mini 已是全局，够用。窗口标题虽设但 `skipTaskbar:true` 不在任务栏显示（伪装窗口才在任务栏）。
+
+
+
 | id | 级别 | essence / 方案 |
 |----|------|----------------|
 | `no-boss-key` | 🟠 | **老板键**：全局热键秒隐 / 切伪装窗。优先级最高 |

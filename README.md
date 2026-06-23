@@ -3,7 +3,7 @@
 一个 Electron 桌面悬浮俄罗斯方块小程序（无边框 / 透明 / 置顶），带启发式 AI 自动演示。
 本仓库是在 `hamletzhang/tetris-widget` 基础上的增强 fork，目标是**手感不丢、AI 更聪明、能摸鱼、玩法更丰富**。fork 来源与许可见 [NOTICE.md](NOTICE.md)。
 
-> 改造分 Phase 推进。**Phase 1（手感与 Bug）、Phase 2（AI 强化）已完成**；Phase 3（隐身/摸鱼）、Phase 4（趣味）规划见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
+> 改造分 Phase 推进。**Phase 1（手感）、Phase 2（AI）、Phase 3（隐身/摸鱼）已完成**；Phase 4（趣味）规划见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 已实现（Phase 1）
 
@@ -64,6 +64,28 @@ AI 模式下游戏结束 5 秒后自动重开（适合当桌面演示）。按 *
 | 旧版 shipped 1-step | 106 | 0/20 |
 | El-Tetris 普通 (1-ply) | 562 | 7/20 |
 | El-Tetris 变态 (2-ply+hold) | 799 | 8/8 |
+
+## 隐身 / 摸鱼（Phase 3）
+
+点 ⚙ 打开**设置面板**（透明度、置顶、鼠标穿透、失焦自动暂停/隐藏、窗口标题、DAS/ARR/软降/锁定延迟、键位重绑、全局热键、导入/导出/恢复默认）。设置全部持久化。
+
+- **老板键**：默认 `Ctrl+Alt+B`（全局，窗口不聚焦也生效）。一键隐藏游戏并弹出**伪装的 VS Code 编辑器**；再按一次恢复。关闭伪装窗口也会恢复。
+- **鼠标穿透**：`Ctrl+Alt+T`。开启后鼠标点击穿过游戏窗口落到后面的工作窗口，游戏仍接收键盘。
+- **显示/隐藏**：`Ctrl+Alt+H`。**Mini 模式**：`Ctrl+Alt+M`（缩成只剩棋盘的小窗）。
+- **系统托盘**：右键菜单可显示/隐藏、老板键、鼠标穿透、Mini、退出；左键点击切换显示。
+- **透明度**滑杆（最低 10%，超隐身）、**窗口置顶**开关、**失焦自动暂停 / 自动隐藏**、**自定义窗口标题**（伪装）。
+- **全键位自定义** + 暴露 **DAS/ARR**；全局热键可改（Electron accelerator 写法，如 `Control+Alt+B`）。
+
+> 全局热键是系统级的：注册后会在全系统拦截该组合键。默认用不常见的 `Ctrl+Alt+*` 组合，可在设置里改。
+
+默认全局热键：
+
+| 功能 | 默认热键 |
+|------|---------|
+| 老板键（隐藏 + 伪装） | `Ctrl+Alt+B` |
+| 显示 / 隐藏 | `Ctrl+Alt+H` |
+| 鼠标穿透 | `Ctrl+Alt+T` |
+| Mini 模式 | `Ctrl+Alt+M` |
 
 ## 构建与运行
 

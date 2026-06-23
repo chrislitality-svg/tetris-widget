@@ -95,6 +95,16 @@ async function run() {
   results.D = await evaljs(`(function(){ return JSON.stringify({ tier:(typeof AI_TIERS!=='undefined'?AI_TIERS[aiMode]:String(aiMode)), aiLines:lines, aiScore:score, hasCurrent:!!currentPiece, gameOver:gameOver, debugOn:settings.aiDebug }); })();`);
   await shot('D_ai_insane_debug.png');
 
+  // ---- Scenario E: settings panel renders ----
+  results.E = await evaljs(`(function(){ try { aiMode=0; applyAIMode(0); resetGame(); openSettings(); return JSON.stringify({ ok:true, panelOpen: !document.getElementById('settingsPanel').classList.contains('hidden'), keybindRows: document.getElementById('keybindList').children.length }); } catch(e){ return JSON.stringify({ ok:false, error:String(e&&e.stack||e) }); } })();`);
+  await wait(250); // let the DOM overlay composite before capture
+  await shot('E_settings.png');
+
+  // ---- Scenario F: mini mode collapses to board only ----
+  results.F = await evaljs(`(function(){ try { closeSettings(); toggleMini(); draw(); return JSON.stringify({ ok:true, mini: miniMode, hasMiniClass: document.querySelector('.widget-container').classList.contains('mini') }); } catch(e){ return JSON.stringify({ ok:false, error:String(e&&e.stack||e) }); } })();`);
+  await wait(250);
+  await shot('F_mini.png');
+
   console.log('VERIFY_RESULTS=' + JSON.stringify(results));
   await wait(200);
   win.destroy();
