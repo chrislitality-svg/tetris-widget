@@ -14,7 +14,7 @@ const CONFIG_FILE = 'tetris-config.json';
 let configPath = '';
 
 // Only these top-level keys may be persisted (save-config hardening).
-const ALLOWED_CONFIG_KEYS = ['size', 'speed', 'aiMode', 'highScore', 'settings', 'windowBounds'];
+const ALLOWED_CONFIG_KEYS = ['size', 'speed', 'aiMode', 'highScore', 'settings', 'windowBounds', 'mode', 'records', 'achievements'];
 
 // Configurable global hotkeys (renderer can override via apply-global-hotkeys).
 let globalHotkeys = {

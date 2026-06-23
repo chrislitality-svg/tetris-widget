@@ -327,6 +327,12 @@ let settingsWasPlaying = false;
 // theme
 let activeTheme = THEMES.classic;
 
+// modes / leaderboard
+let mode = 'marathon';
+let modeElapsedMs = 0;
+let gameWon = false;
+let records = {};
+
 // ===================== 初始化 =====================
 function init() {
   canvas = document.getElementById('gameCanvas');
@@ -354,6 +360,8 @@ function init() {
     settings.keybinds = Object.assign({}, DEFAULT_SETTINGS.keybinds, settings.keybinds || {});
     settings.globalHotkeys = Object.assign({}, DEFAULT_SETTINGS.globalHotkeys, settings.globalHotkeys || {});
     applyTheme(settings.theme);
+    records = config.records || {};
+    mode = MODES[config.mode] ? config.mode : 'marathon';
 
     applySize(sizeKey, false);
     applyAIMode(aiMode);
@@ -537,7 +545,9 @@ function saveConfig() {
     speed: speedKey,
     aiMode,
     highScore,
-    settings
+    settings,
+    mode,
+    records
   }).catch(() => {});
 }
 
@@ -588,6 +598,8 @@ function gameLoop(now) {
   lastTime = now;
 
   if (currentPiece && !gameOver && !paused) {
+    tickMode(dt); // mode timer (Ultra countdown can end the game)
+    if (gameOver) { draw(); updateUI(); return; }
     if (aiMode !== 0) {
       aiAcc += dt;
       while (aiAcc >= AI_STEP_MS) {
@@ -683,6 +695,7 @@ function resetGame() {
   board = [];
   for (let r = 0; r < info.height; r++) board.push(new Array(info.width).fill(null));
 
+  setupMode(); // timer reset + mode-specific board/bag (cheese garbage, daily seed)
   nextType = bag.next();
   spawnPiece();
   draw();
@@ -709,7 +722,11 @@ function spawnPiece(typeOverride) {
   aiPlanDebug = null;
 
   if (collidesAt(board, type, 0, currentPiece.row, currentPiece.col)) {
-    endGame(); // block-out
+    if (MODES[mode] && MODES[mode].noTopOut) {
+      for (let r = 0; r < board.length; r++) board[r].fill(null); // Zen: clear & keep playing
+    } else {
+      endGame(); // block-out
+    }
   }
 }
 
@@ -807,8 +824,10 @@ function lockPiece() {
   const tSpin = detectTSpin(board, currentPiece, lastMoveWasRotation);
   const cleared = clearLines();
   applyScore(cleared, tSpin);
+  onModeClear(cleared); // sprint goal / cheese garbage refill (may end the game)
 
   currentPiece = null;
+  if (gameOver) { draw(); updateUI(); return; }
   spawnPiece(); // natural spawn; re-enables hold
 
   if (gameOver) {
@@ -869,10 +888,9 @@ function endGame() {
   gameOver = true;
   paused = true;
   stopLoop();
-  if (score > highScore) {
-    highScore = score;
-    saveConfig();
-  }
+  if (score > highScore) highScore = score;
+  updateModeRecord();
+  saveConfig();
   if (aiMode !== 0) scheduleAutoRestart();
 }
 
@@ -958,7 +976,7 @@ function draw() {
     }
   }
 
-  if (gameOver) drawOverlay(ctx, canvas.width, canvas.height, '游戏结束');
+  if (gameOver) drawOverlay(ctx, canvas.width, canvas.height, gameWon ? winText() : '游戏结束');
   else if (paused && currentPiece) drawOverlay(ctx, canvas.width, canvas.height, '已暂停');
 
   if (settings.aiDebug && aiMode !== 0 && aiPlanDebug) drawAIDebug();
@@ -1083,6 +1101,9 @@ function updateUI() {
   set('scoreText', score);
   set('levelText', level);
   set('linesText', lines);
+  set('modeText', (MODES[mode] || MODES.marathon).name);
+  set('timeText', modeTimeDisplay());
+  set('recordText', modeRecordDisplay());
   set('highScoreText', highScore);
   const playBtn = document.getElementById('playBtn');
   if (playBtn) playBtn.textContent = paused ? '▶' : '⏸';
@@ -1159,6 +1180,7 @@ function openSettings() {
   if (settingsWasPlaying) togglePause();
   syncSettingsUI();
   renderKeybindList();
+  renderModeButtons();
   panel.classList.remove('hidden');
 }
 
@@ -1308,11 +1330,137 @@ function resetSettings() {
   saveConfig();
 }
 
+// ===================== 游戏模式 / 排行榜 =====================
+const MODES = {
+  marathon: { name: '马拉松' },
+  sprint:   { name: 'Sprint40', timed: 'up', goalLines: 40 },
+  ultra:    { name: 'Ultra2:00', timed: 'down', durationMs: 120000 },
+  zen:      { name: 'Zen', noTopOut: true },
+  cheese:   { name: 'Cheese', garbage: 9 },
+  daily:    { name: '每日挑战', seeded: true }
+};
+const MODE_LIST = ['marathon', 'sprint', 'ultra', 'zen', 'cheese', 'daily'];
+
+function makeSeededRng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function dailySeed() {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+function setMode(m) {
+  if (!MODES[m]) m = 'marathon';
+  mode = m;
+  settingsWasPlaying = false;
+  clearAutoRestart();
+  resetGame();
+  startLoop();
+  updateUI();
+  saveConfig();
+}
+
+// Called inside resetGame after the board is built.
+function setupMode() {
+  modeElapsedMs = 0;
+  gameWon = false;
+  const cfg = MODES[mode] || MODES.marathon;
+  if (cfg.seeded) bag = new BagRandomizer(makeSeededRng(dailySeed())); // deterministic daily
+  if (cfg.garbage) addGarbageRows(cfg.garbage);
+}
+
+function addGarbageRows(n) {
+  const info = CANVAS_SIZES[sizeKey];
+  for (let i = 0; i < n; i++) {
+    const row = new Array(info.width).fill('G');
+    row[Math.floor(Math.random() * info.width)] = null; // one gap so the row is clearable
+    board.shift();   // push the stack up
+    board.push(row); // garbage rises from the bottom
+  }
+}
+
+function countGarbageRows() {
+  let n = 0;
+  for (let r = 0; r < board.length; r++) if (board[r].some(c => c === 'G')) n++;
+  return n;
+}
+
+function tickMode(dt) {
+  if (gameOver || paused) return;
+  modeElapsedMs += dt;
+  const cfg = MODES[mode];
+  if (cfg && cfg.timed === 'down' && modeElapsedMs >= cfg.durationMs) {
+    gameWon = true; // surviving the 2 minutes is the goal in Ultra
+    endGame();
+  }
+}
+
+function onModeClear(cleared) {
+  const cfg = MODES[mode];
+  if (!cfg) return;
+  if (cfg.goalLines && lines >= cfg.goalLines) { gameWon = true; endGame(); return; }
+  if (cfg.garbage && cleared > 0) {
+    const deficit = cfg.garbage - countGarbageRows();
+    if (deficit > 0) addGarbageRows(Math.min(deficit, cleared)); // keep the pressure on
+  }
+}
+
+function updateModeRecord() {
+  if (mode === 'sprint') {
+    if (gameWon && (!records.sprint || modeElapsedMs < records.sprint)) records.sprint = modeElapsedMs;
+  } else if (mode === 'cheese') {
+    if (!records.cheese || lines > records.cheese) records.cheese = lines;
+  } else {
+    if (!records[mode] || score > records[mode]) records[mode] = score;
+  }
+}
+
+function formatTime(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function modeTimeDisplay() {
+  const cfg = MODES[mode];
+  if (!cfg || !cfg.timed) return '—';
+  if (cfg.timed === 'down') return formatTime(Math.max(0, cfg.durationMs - modeElapsedMs));
+  return formatTime(modeElapsedMs);
+}
+
+function modeRecordDisplay() {
+  if (mode === 'sprint') return records.sprint ? formatTime(records.sprint) : '—';
+  if (mode === 'cheese') return records.cheese || 0;
+  if (mode === 'marathon') return Math.max(highScore || 0, records.marathon || 0);
+  return records[mode] || 0;
+}
+
+function winText() {
+  if (mode === 'sprint') return '完成 ' + formatTime(modeElapsedMs);
+  if (mode === 'ultra') return '时间到 ' + score;
+  return '完成';
+}
+
+function renderModeButtons() {
+  const box = document.getElementById('modeBtns');
+  if (!box) return;
+  box.innerHTML = '';
+  for (const m of MODE_LIST) {
+    const b = document.createElement('button');
+    b.className = 'mode-btn' + (m === mode ? ' active' : '');
+    b.textContent = MODES[m].name;
+    b.addEventListener('click', () => { setMode(m); renderModeButtons(); closeSettings(); });
+    box.appendChild(b);
+  }
+}
+
 // ===================== 单测导出（node） =====================
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     SHAPES, PIECE_TYPES, PIECE_COLORS, JLSTZ_KICKS, I_KICKS, DEFAULT_SETTINGS,
     collidesAt, resolveRotation, getFullRows, dropDistance, bottomRowOf,
-    detectTSpin, computeClearScore, BagRandomizer
+    detectTSpin, computeClearScore, BagRandomizer,
+    MODES, formatTime, makeSeededRng
   };
 }

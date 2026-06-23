@@ -32,10 +32,12 @@
           <canvas id="nextCanvas"></canvas>
         </div>
         <div class="info-box">
+          <div class="info-row"><span class="info-key">模式</span><span class="info-val" id="modeText">马拉松</span></div>
           <div class="info-row"><span class="info-key">分数</span><span class="info-val" id="scoreText">0</span></div>
           <div class="info-row"><span class="info-key">等级</span><span class="info-val" id="levelText">1</span></div>
           <div class="info-row"><span class="info-key">行数</span><span class="info-val" id="linesText">0</span></div>
-          <div class="info-row"><span class="info-key">最高</span><span class="info-val" id="highScoreText">0</span></div>
+          <div class="info-row"><span class="info-key">时间</span><span class="info-val" id="timeText">—</span></div>
+          <div class="info-row"><span class="info-key">最佳</span><span class="info-val" id="recordText">0</span></div>
         </div>
       </div>
     </div>
@@ -43,6 +45,9 @@
     <div class="settings-panel hidden" id="settingsPanel">
       <div class="sp-head"><span>设置</span><button class="icon-btn" id="spClose" title="关闭">×</button></div>
       <div class="sp-body">
+        <div class="sp-sec">游戏模式</div>
+        <div id="modeBtns" class="sp-modes"></div>
+
         <div class="sp-sec">外观 / 隐身</div>
         <label class="sp-row"><span>透明度 <i id="lblOpacity"></i></span><input type="range" id="optOpacity" min="0.1" max="1" step="0.05"></label>
         <label class="sp-row"><span>窗口置顶</span><input type="checkbox" id="optAOT"></label>

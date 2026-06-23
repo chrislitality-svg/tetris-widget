@@ -105,6 +105,20 @@ async function run() {
   await wait(250);
   await shot('F_mini.png');
 
+  // ---- Scenario G: game modes + theme ----
+  results.G = await evaljs(`(function(){ try {
+    setMode('cheese'); var cheeseGarbage = countGarbageRows();
+    setMode('ultra'); var ultraTime = modeTimeDisplay();
+    setMode('sprint'); var sprintGoal = MODES.sprint.goalLines;
+    // screenshot: neon theme + cheese mode + a few pieces dropped onto the garbage
+    applyTheme('neon'); aiMode = 0; applyAIMode(0); setMode('cheese');
+    for (var i = 0; i < 3; i++) hardDrop();
+    draw();
+    return JSON.stringify({ ok:true, cheeseGarbage: cheeseGarbage, ultraTime: ultraTime, sprintGoal: sprintGoal, modeNow: mode, theme: settings.theme, modes: MODE_LIST.length });
+  } catch(e){ return JSON.stringify({ ok:false, error:String(e&&e.stack||e) }); } })();`);
+  await wait(200);
+  await shot('G_cheese_neon.png');
+
   console.log('VERIFY_RESULTS=' + JSON.stringify(results));
   await wait(200);
   win.destroy();
