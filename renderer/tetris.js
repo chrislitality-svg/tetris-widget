@@ -113,6 +113,7 @@ const DEFAULT_SETTINGS = {
   clickThrough: false,
   windowTitle: '俄罗斯方块',
   theme: 'classic',
+  muted: true,
   // input bindings (each action -> list of e.key values)
   keybinds: {
     moveLeft: ['ArrowLeft', 'a', 'A'],
@@ -332,6 +333,13 @@ let mode = 'marathon';
 let modeElapsedMs = 0;
 let gameWon = false;
 let records = {};
+
+// juice / audio
+let shakeUntil = 0;
+let shakeMag = 0;
+let flashUntil = 0;
+let particles = [];
+let audioCtx = null;
 
 // ===================== 初始化 =====================
 function init() {
@@ -633,6 +641,7 @@ function gameLoop(now) {
     }
   }
 
+  updateParticles(dt);
   draw();
   updateUI();
   if (running) rafId = requestAnimationFrame(gameLoop);
@@ -689,6 +698,9 @@ function resetGame() {
   holdType = null;
   canHold = true;
   clearText = '';
+  particles = [];
+  shakeUntil = 0;
+  flashUntil = 0;
   bag = new BagRandomizer();
 
   const info = CANVAS_SIZES[sizeKey];
@@ -774,6 +786,7 @@ function rotate(dir) {
   lastMoveWasRotation = true;
   lastKickIndex = res.kickIndex;
   afterMove(false);
+  playSound('rotate');
   return true;
 }
 
@@ -790,6 +803,7 @@ function hardDrop() {
   let n = 0;
   while (move(1, 0)) n++;
   score += n * 2; // hard-drop scoring (+2 per cell)
+  if (n > 0) playSound('hard');
   lockPiece();
 }
 
@@ -807,6 +821,7 @@ function holdPiece() {
   canHold = false;
   lockTimer = 0;
   lockResets = 0;
+  playSound('hold');
 }
 
 function lockPiece() {
@@ -822,8 +837,12 @@ function lockPiece() {
   }
 
   const tSpin = detectTSpin(board, currentPiece, lastMoveWasRotation);
+  const fullRows = getFullRows(board);
+  const clearCells = fullRows.map(r => board[r].slice());
   const cleared = clearLines();
   applyScore(cleared, tSpin);
+  if (cleared > 0) triggerClearJuice(cleared, tSpin, fullRows, clearCells);
+  else playSound('lock');
   onModeClear(cleared); // sprint goal / cheese garbage refill (may end the game)
 
   currentPiece = null;
@@ -853,16 +872,20 @@ function clearLines() {
 function applyScore(cleared, tSpin) {
   if (cleared > 0) combo++; else combo = -1;
 
-  const res = computeClearScore(cleared, tSpin, level, b2b, combo);
+  const b2bBefore = b2b; // capture before update — the 1.5x only applies if we were already in B2B
+  const res = computeClearScore(cleared, tSpin, level, b2bBefore, combo);
   score += res.points;
+  const b2bApplied = cleared > 0 && res.difficult && b2bBefore;
 
   if (cleared > 0) {
     lines += cleared;
-    level = Math.floor(lines / 10) + 1;
+    const newLevel = Math.floor(lines / 10) + 1;
+    if (newLevel > level) triggerLevelUp();
+    level = newLevel;
     b2b = res.difficult; // a non-difficult line clear breaks B2B
   }
 
-  setClearText(cleared, tSpin, res.difficult && b2b);
+  setClearText(cleared, tSpin, b2bApplied);
 
   if (score > highScore) {
     highScore = score;
@@ -888,6 +911,7 @@ function endGame() {
   gameOver = true;
   paused = true;
   stopLoop();
+  playSound('over');
   if (score > highScore) highScore = score;
   updateModeRecord();
   saveConfig();
@@ -949,6 +973,16 @@ function draw() {
 
   ctx.fillStyle = activeTheme.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const sNow = nowMs();
+  let sx = 0, sy = 0;
+  if (sNow < shakeUntil) {
+    const m = shakeMag * Math.max(0, (shakeUntil - sNow) / 200);
+    sx = (Math.random() * 2 - 1) * m;
+    sy = (Math.random() * 2 - 1) * m;
+  }
+  ctx.save();
+  ctx.translate(sx, sy);
   drawGrid(ctx, W, H, canvas.width, canvas.height);
 
   for (let r = 0; r < H; r++) {
@@ -975,6 +1009,10 @@ function draw() {
       }
     }
   }
+
+  drawParticles();
+  ctx.restore(); // end shake transform
+  drawFlash();
 
   if (gameOver) drawOverlay(ctx, canvas.width, canvas.height, gameWon ? winText() : '游戏结束');
   else if (paused && currentPiece) drawOverlay(ctx, canvas.width, canvas.height, '已暂停');
@@ -1206,6 +1244,7 @@ function syncSettingsUI() {
   g('optAutoHide').checked = settings.autoHideOnBlur;
   g('optTitle').value = settings.windowTitle;
   if (g('optTheme')) g('optTheme').value = settings.theme;
+  if (g('optSound')) g('optSound').checked = !settings.muted;
   g('optDas').value = settings.das; g('lblDas').textContent = settings.das + 'ms';
   g('optArr').value = settings.arr; g('lblArr').textContent = settings.arr + 'ms';
   g('optSoft').value = settings.softDropMs; g('lblSoft').textContent = settings.softDropMs + 'ms';
@@ -1301,6 +1340,7 @@ function bindSettingsPanel() {
     themeSel.dataset.built = '1';
   }
   if (themeSel) themeSel.addEventListener('change', e => { applyTheme(e.target.value); draw(); saveConfig(); });
+  if (g('optSound')) g('optSound').addEventListener('change', e => { settings.muted = !e.target.checked; if (!settings.muted) playSound('rotate'); saveConfig(); });
   g('ioExport').addEventListener('click', () => { g('ioText').value = JSON.stringify(settings, null, 2); });
   g('ioImport').addEventListener('click', importSettings);
   g('ioReset').addEventListener('click', resetSettings);
@@ -1328,6 +1368,101 @@ function resetSettings() {
   syncSettingsUI();
   renderKeybindList();
   saveConfig();
+}
+
+// ===================== Juice / 音效 =====================
+// Synthesized SFX via WebAudio — no bundled audio assets (copyright-safe). Muted by default.
+const SOUND_CFG = {
+  move:    { wave: 'square',   freq: 220, dur: 0.03, vol: 0.05 },
+  rotate:  { wave: 'square',   freq: 330, dur: 0.05, vol: 0.06 },
+  lock:    { wave: 'triangle', freq: 160, dur: 0.06, vol: 0.07 },
+  hard:    { wave: 'square',   freq: 130, dur: 0.06, vol: 0.08 },
+  hold:    { wave: 'sine',     freq: 440, dur: 0.06, vol: 0.05 },
+  clear:   { wave: 'sine',     freq: 520, slide: 780, dur: 0.18, vol: 0.09 },
+  tetris:  { wave: 'sawtooth', freq: 440, slide: 880, dur: 0.30, vol: 0.11 },
+  levelup: { wave: 'sine',     freq: 660, slide: 990, dur: 0.25, vol: 0.10 },
+  over:    { wave: 'sawtooth', freq: 300, slide: 80,  dur: 0.50, vol: 0.10 }
+};
+
+function nowMs() { return (typeof performance !== 'undefined' ? performance.now() : Date.now()); }
+
+function playSound(type) {
+  if (settings.muted) return;
+  if (typeof window === 'undefined' || !(window.AudioContext || window.webkitAudioContext)) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const cfg = SOUND_CFG[type] || SOUND_CFG.move;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = cfg.wave;
+    o.frequency.setValueAtTime(cfg.freq, t);
+    if (cfg.slide) o.frequency.exponentialRampToValueAtTime(cfg.slide, t + cfg.dur);
+    g.gain.setValueAtTime(cfg.vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + cfg.dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + cfg.dur);
+  } catch (e) { /* audio unavailable */ }
+}
+
+function triggerClearJuice(cleared, tSpin, rows, cellsList) {
+  const big = cleared >= 4 || tSpin !== 'none';
+  const now = nowMs();
+  shakeMag = big ? 8 : 2 + cleared * 1.5;
+  shakeUntil = now + (big ? 260 : 160);
+  flashUntil = now + (big ? 150 : 90);
+  spawnParticles(rows, cellsList);
+  playSound(big ? 'tetris' : 'clear');
+}
+
+function triggerLevelUp() {
+  flashUntil = nowMs() + 150;
+  playSound('levelup');
+}
+
+function spawnParticles(rows, cellsList) {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const cells = cellsList[i] || [];
+    for (let c = 0; c < cells.length; c++) {
+      if (cells[c] == null) continue;
+      const cx = c * CELL_PX + CELL_PX / 2;
+      const cy = r * CELL_PX + CELL_PX / 2;
+      const color = pieceColor(cells[c]);
+      for (let k = 0; k < 2; k++) {
+        particles.push({ x: cx, y: cy, vx: (Math.random() * 2 - 1) * 2.5, vy: Math.random() * -3 - 0.5, size: 3, color, life: 420, maxLife: 420 });
+      }
+    }
+  }
+  if (particles.length > 320) particles = particles.slice(-320);
+}
+
+function updateParticles(dt) {
+  if (!particles.length) return;
+  const f = dt / 16.67;
+  for (const p of particles) { p.x += p.vx * f; p.y += p.vy * f; p.vy += 0.4 * f; p.life -= dt; }
+  particles = particles.filter(p => p.life > 0);
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    ctx.restore();
+  }
+}
+
+function drawFlash() {
+  const now = nowMs();
+  if (now < flashUntil) {
+    ctx.save();
+    ctx.globalAlpha = 0.45 * Math.max(0, (flashUntil - now) / 150);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
 }
 
 // ===================== 游戏模式 / 排行榜 =====================

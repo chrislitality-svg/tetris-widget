@@ -119,6 +119,25 @@ async function run() {
   await wait(200);
   await shot('G_cheese_neon.png');
 
+  // ---- Scenario H: clear juice (force a Tetris -> particles + flash) ----
+  results.H = await evaljs(`(function(){ try {
+    miniMode = false; document.querySelector('.widget-container').classList.remove('mini');
+    applyTheme('classic'); aiMode = 0; applyAIMode(0); setMode('marathon'); paused = false;
+    const H = board.length, W = board[0].length;
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) board[r][c] = null;
+    for (let r = H - 4; r < H; r++) for (let c = 0; c < W - 1; c++) board[r][c] = 'I'; // 4 full rows minus last col
+    currentPiece = { type: 'I', rotation: 1, row: H - 4, col: W - 3 }; // vertical I in the last column
+    hardDrop(); // locks -> clears 4 -> Tetris juice
+    const firstText = clearText;
+    for (let r = H - 4; r < H; r++) for (let c = 0; c < W - 1; c++) board[r][c] = 'I'; // rebuild for a 2nd tetris
+    currentPiece = { type: 'I', rotation: 1, row: H - 4, col: W - 3 };
+    hardDrop();
+    const secondText = clearText;
+    draw();
+    return JSON.stringify({ ok:true, particles: particles.length, flashActive: nowMs() < flashUntil, shakeActive: nowMs() < shakeUntil, lines: lines, score: score, firstText: firstText, secondText: secondText });
+  } catch(e){ return JSON.stringify({ ok:false, error:String(e&&e.stack||e) }); } })();`);
+  await shot('H_tetris_juice.png');
+
   console.log('VERIFY_RESULTS=' + JSON.stringify(results));
   await wait(200);
   win.destroy();
