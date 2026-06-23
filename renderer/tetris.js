@@ -112,6 +112,7 @@ const DEFAULT_SETTINGS = {
   alwaysOnTop: true,
   clickThrough: false,
   windowTitle: '俄罗斯方块',
+  theme: 'classic',
   // input bindings (each action -> list of e.key values)
   keybinds: {
     moveLeft: ['ArrowLeft', 'a', 'A'],
@@ -135,6 +136,16 @@ const DEFAULT_SETTINGS = {
 const ACTION_LABELS = {
   moveLeft: '左移', moveRight: '右移', softDrop: '软降',
   rotateCW: '顺时针', rotateCCW: '逆时针', hardDrop: '硬降', hold: '暂存', pause: '暂停'
+};
+
+// Color themes. Board cells store the piece TYPE letter (or 'G' for garbage);
+// the color is resolved from the active theme at draw time, so switching theme
+// is instant and affects already-placed blocks too.
+const THEMES = {
+  classic: { name: '经典', bg: '#0b1a0b', grid: 'rgba(126,231,135,0.05)', colors: { I: '#36d1dc', O: '#fbbf24', T: '#a78bfa', S: '#4ade80', Z: '#f87171', J: '#60a5fa', L: '#fb923c', G: '#6b7280' } },
+  mono:    { name: '极简', bg: '#0d0d0f', grid: 'rgba(255,255,255,0.05)', colors: { I: '#e5e7eb', O: '#d1d5db', T: '#cbd5e1', S: '#9ca3af', Z: '#a8adb8', J: '#b0b6c0', L: '#dfe3ea', G: '#4b5563' } },
+  neon:    { name: '霓虹', bg: '#0a0a12', grid: 'rgba(0,255,255,0.06)', colors: { I: '#00f0ff', O: '#fff200', T: '#ff00e6', S: '#00ff85', Z: '#ff003c', J: '#2979ff', L: '#ff9100', G: '#3a3a4a' } },
+  pastel:  { name: '马卡龙', bg: '#1a1620', grid: 'rgba(255,255,255,0.05)', colors: { I: '#a0e7e5', O: '#fbe7a1', T: '#c3aed6', S: '#b5ead7', Z: '#ffb3ba', J: '#a2d2ff', L: '#ffd6a5', G: '#6b7280' } }
 };
 
 const AI_STEP_MS = 30; // how often the AI performs one alignment step
@@ -313,6 +324,9 @@ let capturingKeybind = false;
 let wasPlayingBeforeHide = false;
 let settingsWasPlaying = false;
 
+// theme
+let activeTheme = THEMES.classic;
+
 // ===================== 初始化 =====================
 function init() {
   canvas = document.getElementById('gameCanvas');
@@ -339,6 +353,7 @@ function init() {
     if (config.settings) settings = Object.assign({}, DEFAULT_SETTINGS, config.settings);
     settings.keybinds = Object.assign({}, DEFAULT_SETTINGS.keybinds, settings.keybinds || {});
     settings.globalHotkeys = Object.assign({}, DEFAULT_SETTINGS.globalHotkeys, settings.globalHotkeys || {});
+    applyTheme(settings.theme);
 
     applySize(sizeKey, false);
     applyAIMode(aiMode);
@@ -780,13 +795,12 @@ function holdPiece() {
 function lockPiece() {
   if (!currentPiece) return;
   const shape = getShape(currentPiece);
-  const color = PIECE_COLORS[currentPiece.type];
   for (let r = 0; r < shape.length; r++) {
     for (let c = 0; c < shape[r].length; c++) {
       if (!shape[r][c]) continue;
       const br = currentPiece.row + r;
       const bc = currentPiece.col + c;
-      if (br >= 0 && br < board.length && bc >= 0 && bc < board[0].length) board[br][bc] = color;
+      if (br >= 0 && br < board.length && bc >= 0 && bc < board[0].length) board[br][bc] = currentPiece.type;
     }
   }
 
@@ -903,26 +917,32 @@ function aiStep() {
 }
 
 // ===================== 绘制 =====================
+function pieceColor(t) { return (activeTheme && activeTheme.colors[t]) || '#888888'; }
+function applyTheme(key) {
+  activeTheme = THEMES[key] ? THEMES[key] : THEMES.classic;
+  settings.theme = THEMES[key] ? key : 'classic';
+}
+
 function draw() {
   if (!ctx) return;
   const info = CANVAS_SIZES[sizeKey];
   const W = info.width;
   const H = info.height;
 
-  ctx.fillStyle = '#0b1a0b';
+  ctx.fillStyle = activeTheme.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawGrid(ctx, W, H, canvas.width, canvas.height);
 
   for (let r = 0; r < H; r++) {
     for (let c = 0; c < W; c++) {
-      if (board[r][c] != null) drawCell(ctx, c, r, board[r][c]);
+      if (board[r][c] != null) drawCell(ctx, c, r, pieceColor(board[r][c]));
     }
   }
 
   if (currentPiece && !gameOver) {
     drawGhost();
     const shape = getShape(currentPiece);
-    const color = PIECE_COLORS[currentPiece.type];
+    const color = pieceColor(currentPiece.type);
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c]) drawCell(ctx, currentPiece.col + c, currentPiece.row + r, color);
@@ -948,7 +968,7 @@ function draw() {
 }
 
 function drawGrid(context, gridW, gridH, canvasW, canvasH) {
-  context.strokeStyle = 'rgba(126, 231, 135, 0.05)';
+  context.strokeStyle = activeTheme.grid;
   context.lineWidth = 1;
   context.beginPath();
   for (let r = 0; r <= gridH; r++) { context.moveTo(0, r * CELL_PX); context.lineTo(canvasW, r * CELL_PX); }
@@ -973,7 +993,7 @@ function drawGhost() {
   if (!currentPiece) return;
   const shape = getShape(currentPiece);
   const ghostRow = currentPiece.row + dropDistance(board, currentPiece);
-  ctx.strokeStyle = PIECE_COLORS[currentPiece.type];
+  ctx.strokeStyle = pieceColor(currentPiece.type);
   ctx.globalAlpha = 0.3;
   ctx.lineWidth = 2;
   for (let r = 0; r < shape.length; r++) {
@@ -1042,7 +1062,7 @@ function drawPreview(context, cv, type, faded) {
   context.clearRect(0, 0, cv.width, cv.height);
   if (!type) return;
   const shape = SHAPES[type][0];
-  const color = PIECE_COLORS[type];
+  const color = pieceColor(type);
   const rows = shape.length;
   const cols = shape[0].length;
   const offsetX = (cv.width - cols * CELL_PX) / 2;
@@ -1163,6 +1183,7 @@ function syncSettingsUI() {
   g('optAutoPause').checked = settings.autoPauseOnBlur;
   g('optAutoHide').checked = settings.autoHideOnBlur;
   g('optTitle').value = settings.windowTitle;
+  if (g('optTheme')) g('optTheme').value = settings.theme;
   g('optDas').value = settings.das; g('lblDas').textContent = settings.das + 'ms';
   g('optArr').value = settings.arr; g('lblArr').textContent = settings.arr + 'ms';
   g('optSoft').value = settings.softDropMs; g('lblSoft').textContent = settings.softDropMs + 'ms';
@@ -1250,6 +1271,14 @@ function bindSettingsPanel() {
     if (window.electronAPI) window.electronAPI.applyGlobalHotkeys(settings.globalHotkeys);
     saveConfig();
   });
+  const themeSel = g('optTheme');
+  if (themeSel && !themeSel.dataset.built) {
+    for (const k of Object.keys(THEMES)) {
+      const o = document.createElement('option'); o.value = k; o.textContent = THEMES[k].name; themeSel.appendChild(o);
+    }
+    themeSel.dataset.built = '1';
+  }
+  if (themeSel) themeSel.addEventListener('change', e => { applyTheme(e.target.value); draw(); saveConfig(); });
   g('ioExport').addEventListener('click', () => { g('ioText').value = JSON.stringify(settings, null, 2); });
   g('ioImport').addEventListener('click', importSettings);
   g('ioReset').addEventListener('click', resetSettings);
