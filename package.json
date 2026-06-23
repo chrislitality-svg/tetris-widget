@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
-    "test": "node test/core.test.js",
+    "test": "node test/core.test.js && node test/ai.test.js",
+    "bench": "node benchmark_ai.js",
     "verify": "electron tools/verify_visual.js"
   },
   "build": {

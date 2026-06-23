@@ -91,6 +91,13 @@
 
 ## Phase 2 — AI（基准实测极弱，ROI 最高）
 
+> **✅ Phase 2 完成（commit c35f074 / ec1448d）**：新建共享引擎 `renderer/ai.js`（El-Tetris/Dellacherie 特征 + beam 前瞻 + hold + 难度档位），实机与 benchmark 共用。
+> AI bug 全消（旧 `getBestAction2Step` 消行恒 0、每 tick 重算、CompleteHeuristic 挖井 0 行、benchmark 中位数 `undefined`、`simulatePlacement` 漏 `r++`）。
+> 难度档位 手动/弱/普通/变态（AI 按钮循环）+ **G 键决策可视化**（落点高亮+特征）。基准实测：旧版 106 行(0/20 不死) → 普通 562(7/20) → 变态 799(8/8 触顶≈不死)。`npm test` 43 条全过、`npm run verify` 实机插桩通过。
+> **暂缓**：自动调参（遗传/爬山）——已有可配置权重接口，当前手调权重已极强，按 spec「有余力再上」推迟。多 next 预览（队列）属 Phase 4 打磨。
+
+
+
 > **基准数据**（10×20，每策略 100 局）：实机 aiMode=1 ≈ **4 行/局**、aiMode=2 ≈ **7 行/局** 即死；基准里「改进版」CompleteHeuristic 反而 **0 行**。
 > 良好的 Dellacherie/El-Tetris 启发式应能存活**数百~数千行**。目标：实机 AI 进入这个量级。
 

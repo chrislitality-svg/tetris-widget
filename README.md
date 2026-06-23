@@ -3,7 +3,7 @@
 一个 Electron 桌面悬浮俄罗斯方块小程序（无边框 / 透明 / 置顶），带启发式 AI 自动演示。
 本仓库是在 `hamletzhang/tetris-widget` 基础上的增强 fork，目标是**手感不丢、AI 更聪明、能摸鱼、玩法更丰富**。fork 来源与许可见 [NOTICE.md](NOTICE.md)。
 
-> 改造分 Phase 推进。**Phase 1（手感与 Bug）已完成**；Phase 2（AI 强化）、Phase 3（隐身/摸鱼）、Phase 4（趣味）规划见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
+> 改造分 Phase 推进。**Phase 1（手感与 Bug）、Phase 2（AI 强化）已完成**；Phase 3（隐身/摸鱼）、Phase 4（趣味）规划见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 已实现（Phase 1）
 
@@ -45,11 +45,25 @@
 
 > 目前通过配置文件持久化；可视化的键位/手感设置面板计划在 Phase 3 提供。
 
-## AI
+## AI（Phase 2 · 已强化）
 
-- `AI`：单步贪心；`AI+`：含 next 的两步前瞻。AI 模式下游戏结束会 5 秒后自动重开（适合当桌面演示）。
-- AI 强度与可调权重、beam search、难度档位、决策可视化等是 **Phase 2** 的工作。
-- 现成的无 UI 基准台见 `benchmark_ai.js`：`node benchmark_ai.js`。
+点击 `AI` 按钮在 **手动 → 弱 → 普通 → 变态** 间循环（按钮显示 弱/普/变，悬停有全名）：
+
+- **弱鸡**：近视权重 + 高失误率，可被人类击败（适合当对手）。
+- **普通**：El-Tetris 评估，1 步。
+- **变态**：El-Tetris 评估 + 含 next 前瞻 + 自动 hold（基准里近乎不死）。
+
+评估特征参考 El-Tetris / Dellacherie：landing height、消行数、行/列 transitions、空洞数、井深。
+实机与基准**共用同一套引擎**（`renderer/ai.js`），所以基准数据对实机有代表性。
+AI 模式下游戏结束 5 秒后自动重开（适合当桌面演示）。按 **G** 切换 **AI 决策可视化**（高亮 AI 选定的落点 + 难度/空洞/评分）。
+
+基准（`npm run bench` 或 `node benchmark_ai.js`，10×20 / 7-bag）：
+
+| 策略 | 平均消行 | 触顶(≈不死) |
+|------|---------|-------------|
+| 旧版 shipped 1-step | 106 | 0/20 |
+| El-Tetris 普通 (1-ply) | 562 | 7/20 |
+| El-Tetris 变态 (2-ply+hold) | 799 | 8/8 |
 
 ## 构建与运行
 
