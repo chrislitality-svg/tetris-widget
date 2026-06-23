@@ -29,7 +29,12 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
 }
+
+/* mini mode: board only */
+.widget-container.mini .side-panel { display: none; }
+.widget-container.mini .game-area { gap: 0; }
 
 .top-actions {
   display: flex;
@@ -163,3 +168,56 @@ html, body {
   color: rgba(255, 255, 255, 0.75);
   font-weight: bold;
 }
+
+/* ===================== 设置面板 ===================== */
+.settings-panel {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 18, 24, 0.985);
+  border-radius: 20px;
+  padding: 8px 12px 14px;
+  overflow-y: auto;
+  z-index: 50;
+  -webkit-app-region: no-drag;
+  font-size: 11px;
+}
+.settings-panel.hidden { display: none; }
+.sp-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px;
+}
+.sp-sec {
+  color: rgba(126, 231, 135, 0.85); font-size: 10px; letter-spacing: .5px;
+  margin: 11px 0 4px; text-transform: uppercase;
+}
+.sp-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; padding: 3px 0; color: rgba(255, 255, 255, 0.82);
+}
+.sp-row span { white-space: nowrap; }
+.sp-row i { color: rgba(255, 255, 255, 0.4); font-style: normal; }
+.sp-row input[type=range] { flex: 1; max-width: 150px; accent-color: #60a5fa; }
+.sp-row input[type=checkbox] { accent-color: #60a5fa; width: 14px; height: 14px; }
+.sp-row input[type=text] {
+  flex: 1; max-width: 165px; background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; border-radius: 6px;
+  padding: 2px 6px; font-size: 11px;
+}
+.sp-btn {
+  margin-top: 6px; padding: 5px 8px; background: rgba(96, 165, 250, 0.25);
+  color: #bfdbfe; border: none; border-radius: 8px; cursor: pointer; font-size: 11px;
+}
+.sp-btn:hover { background: rgba(96, 165, 250, 0.42); color: #fff; }
+.sp-actions { display: flex; gap: 6px; }
+.sp-actions .sp-btn { flex: 1; }
+#ioText {
+  width: 100%; background: rgba(0, 0, 0, 0.4); color: #cdd6e6;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px;
+  font-size: 10px; font-family: monospace; resize: vertical; padding: 4px;
+}
+.kb-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; gap: 8px; }
+.kb-row .kb-name { color: rgba(255, 255, 255, 0.82); white-space: nowrap; }
+.kb-row .kb-keys { flex: 1; color: rgba(255, 255, 255, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 10px; text-align: right; }
+.kb-row .kb-btn { background: rgba(255, 255, 255, 0.1); border: none; color: #fff; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 10px; }
+.kb-row .kb-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.kb-row .kb-btn.capturing { background: rgba(251, 191, 36, 0.55); color: #1a1a1a; }

@@ -105,7 +105,36 @@ const DEFAULT_SETTINGS = {
   lockDelayMs: 500,    // grounded grace period before lock
   lockResetCap: 15,    // max move/rotate lock-delay resets (infinity guard)
   autoPauseOnBlur: true,
-  aiDebug: false       // AI decision-visualization overlay (toggle: G)
+  autoHideOnBlur: false, // hide to tray on blur (vs just pause)
+  aiDebug: false,      // AI decision-visualization overlay (toggle: G)
+  // stealth / window
+  opacity: 1,
+  alwaysOnTop: true,
+  clickThrough: false,
+  windowTitle: '俄罗斯方块',
+  // input bindings (each action -> list of e.key values)
+  keybinds: {
+    moveLeft: ['ArrowLeft', 'a', 'A'],
+    moveRight: ['ArrowRight', 'd', 'D'],
+    softDrop: ['ArrowDown', 's', 'S'],
+    rotateCW: ['ArrowUp', 'w', 'W', 'x', 'X'],
+    rotateCCW: ['z', 'Z', 'Control'],
+    hardDrop: [' '],
+    hold: ['c', 'C', 'Shift'],
+    pause: ['p', 'P', 'Escape']
+  },
+  // OS-level global shortcuts (Electron accelerators)
+  globalHotkeys: {
+    boss: 'Control+Alt+B',
+    toggleShow: 'Control+Alt+H',
+    clickThrough: 'Control+Alt+T',
+    mini: 'Control+Alt+M'
+  }
+};
+
+const ACTION_LABELS = {
+  moveLeft: '左移', moveRight: '右移', softDrop: '软降',
+  rotateCW: '顺时针', rotateCCW: '逆时针', hardDrop: '硬降', hold: '暂存', pause: '暂停'
 };
 
 const AI_STEP_MS = 30; // how often the AI performs one alignment step
@@ -278,6 +307,12 @@ let aiPlanDebug = null;
 let clearText = '';
 let clearTextUntil = 0;
 
+// stealth / settings ui
+let miniMode = false;
+let capturingKeybind = false;
+let wasPlayingBeforeHide = false;
+let settingsWasPlaying = false;
+
 // ===================== 初始化 =====================
 function init() {
   canvas = document.getElementById('gameCanvas');
@@ -302,6 +337,8 @@ function init() {
     aiMode = [0, 1, 2, 3].includes(config.aiMode) ? config.aiMode : 0;
     highScore = config.highScore || 0;
     if (config.settings) settings = Object.assign({}, DEFAULT_SETTINGS, config.settings);
+    settings.keybinds = Object.assign({}, DEFAULT_SETTINGS.keybinds, settings.keybinds || {});
+    settings.globalHotkeys = Object.assign({}, DEFAULT_SETTINGS.globalHotkeys, settings.globalHotkeys || {});
 
     applySize(sizeKey, false);
     applyAIMode(aiMode);
@@ -311,6 +348,9 @@ function init() {
     draw();
     updateUI();
     resizeWindow();
+    applySettings();
+    bindSettingsPanel();
+    registerMainEvents();
   });
 }
 
@@ -360,18 +400,17 @@ function bindControls() {
     startLoop();
     updateUI();
   });
+  wire('settingsBtn', () => openSettings());
   wire('closeBtn', () => window.electronAPI.quitApp());
 }
 
 function bindKeyboard() {
   document.addEventListener('keydown', (e) => {
+    if (capturingKeybind) return; // a rebind capture is consuming keys
     if (gameOver) return;
+    const action = keyAction(e.key);
 
-    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
-      e.preventDefault();
-      togglePause();
-      return;
-    }
+    if (action === 'pause') { e.preventDefault(); togglePause(); return; }
     if (e.key === 'g' || e.key === 'G') { // toggle AI decision-visualization overlay
       e.preventDefault();
       settings.aiDebug = !settings.aiDebug;
@@ -381,32 +420,31 @@ function bindKeyboard() {
     }
     if (paused) return;
     if (aiMode !== 0) return; // manual keys are inert while the AI is driving
+    if (!action) return;
     if (e.repeat) { e.preventDefault(); return; } // we manage repeats via DAS/ARR
+    e.preventDefault();
 
-    switch (e.key) {
-      case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); pressDir(-1); break;
-      case 'ArrowRight': case 'd': case 'D': e.preventDefault(); pressDir(1); break;
-      case 'ArrowDown': case 's': case 'S': e.preventDefault(); heldDown = true; softAcc = 0; softDropStep(); break;
-      case 'ArrowUp': case 'w': case 'W': case 'x': case 'X': e.preventDefault(); rotate(1); break;
-      case 'z': case 'Z': case 'Control': e.preventDefault(); rotate(-1); break;
-      case ' ': e.preventDefault(); hardDrop(); break;
-      case 'c': case 'C': case 'Shift': e.preventDefault(); holdPiece(); break;
+    switch (action) {
+      case 'moveLeft': pressDir(-1); break;
+      case 'moveRight': pressDir(1); break;
+      case 'softDrop': heldDown = true; softAcc = 0; softDropStep(); break;
+      case 'rotateCW': rotate(1); break;
+      case 'rotateCCW': rotate(-1); break;
+      case 'hardDrop': hardDrop(); break;
+      case 'hold': holdPiece(); break;
     }
   });
 
   document.addEventListener('keyup', (e) => {
-    switch (e.key) {
-      case 'ArrowLeft': case 'a': case 'A':
-        heldLeft = false;
-        if (dasDir === -1) { dasDir = heldRight ? 1 : 0; dasCharged = false; dasTimer = 0; }
-        break;
-      case 'ArrowRight': case 'd': case 'D':
-        heldRight = false;
-        if (dasDir === 1) { dasDir = heldLeft ? -1 : 0; dasCharged = false; dasTimer = 0; }
-        break;
-      case 'ArrowDown': case 's': case 'S':
-        heldDown = false;
-        break;
+    const action = keyAction(e.key);
+    if (action === 'moveLeft') {
+      heldLeft = false;
+      if (dasDir === -1) { dasDir = heldRight ? 1 : 0; dasCharged = false; dasTimer = 0; }
+    } else if (action === 'moveRight') {
+      heldRight = false;
+      if (dasDir === 1) { dasDir = heldLeft ? -1 : 0; dasCharged = false; dasTimer = 0; }
+    } else if (action === 'softDrop') {
+      heldDown = false;
     }
   });
 }
@@ -424,17 +462,19 @@ function bindWindowFocus() {
   window.addEventListener('blur', () => {
     heldLeft = heldRight = heldDown = false;
     dasDir = 0;
-    // Auto-pause manual play when you switch away; let AI demos keep running.
-    if (settings.autoPauseOnBlur && aiMode === 0 && !paused && !gameOver && running) {
+    if (aiMode !== 0 || gameOver) return; // AI demos keep running / showing on blur
+    if (settings.autoHideOnBlur) {
+      wasPlayingBeforeHide = running && !paused;
+      if (!paused) togglePause();
+      if (window.electronAPI) window.electronAPI.setVisible(false).catch(() => {});
+    } else if (settings.autoPauseOnBlur && !paused && running) {
       wasAutoPaused = true;
       togglePause();
     }
   });
   window.addEventListener('focus', () => {
-    if (wasAutoPaused && paused && !gameOver) {
-      wasAutoPaused = false;
-      togglePause();
-    }
+    if (wasAutoPaused && paused && !gameOver) { wasAutoPaused = false; togglePause(); }
+    else if (wasPlayingBeforeHide && paused && !gameOver) { wasPlayingBeforeHide = false; togglePause(); }
   });
 }
 
@@ -487,9 +527,13 @@ function saveConfig() {
 }
 
 function computeWindowSize(gameWidth, gameHeight) {
+  if (miniMode) {
+    // board only (side panel hidden): board + canvas-wrap padding(12) + container padding(24)
+    return { width: gameWidth * CELL_PX + 12 + 24, height: gameHeight * CELL_PX + 78 };
+  }
   // board width + canvas-wrap padding(12) + flex gap(10) + side panel(~115) + container padding(24)
   const totalWidth = gameWidth * CELL_PX + 12 + 10 + 115 + 24;
-  // side panel now holds HOLD + NEXT + info; ensure the window is tall enough for it.
+  // side panel holds HOLD + NEXT + info; ensure the window is tall enough for it.
   const SIDE_PANEL_PX = 330;
   const totalHeight = Math.max(gameHeight * CELL_PX, SIDE_PANEL_PX) + 78;
   return { width: totalWidth, height: totalHeight };
@@ -1022,6 +1066,217 @@ function updateUI() {
   set('highScoreText', highScore);
   const playBtn = document.getElementById('playBtn');
   if (playBtn) playBtn.textContent = paused ? '▶' : '⏸';
+}
+
+// ===================== 设置面板 / 隐身 / 键位 =====================
+function keyAction(key) {
+  const kb = settings.keybinds || {};
+  for (const action in kb) {
+    if (kb[action] && kb[action].includes(key)) return action;
+  }
+  return null;
+}
+
+function applySettings() {
+  const api = window.electronAPI;
+  if (!api) return;
+  api.setOpacity(settings.opacity).catch(() => {});
+  api.setAlwaysOnTop(settings.alwaysOnTop).catch(() => {});
+  api.setClickThrough(settings.clickThrough).catch(() => {});
+  api.setTitle(settings.windowTitle).catch(() => {});
+  api.applyGlobalHotkeys(settings.globalHotkeys).catch(() => {});
+}
+
+function applyClickThrough() {
+  if (window.electronAPI) window.electronAPI.setClickThrough(settings.clickThrough).catch(() => {});
+}
+
+function registerMainEvents() {
+  if (window.electronAPI && window.electronAPI.onMainEvent) {
+    window.electronAPI.onMainEvent(handleMainEvent);
+  }
+}
+
+function handleMainEvent(data) {
+  if (!data) return;
+  switch (data.type) {
+    case 'boss':
+      if (data.active) {
+        wasPlayingBeforeHide = running && !paused;
+        if (!paused && !gameOver) togglePause();
+      } else if (wasPlayingBeforeHide && paused && !gameOver) {
+        wasPlayingBeforeHide = false;
+        togglePause();
+      }
+      break;
+    case 'hidden':
+      if (!paused && !gameOver) { wasPlayingBeforeHide = running; togglePause(); }
+      break;
+    case 'toggle-clickthrough':
+      settings.clickThrough = !settings.clickThrough;
+      applyClickThrough();
+      saveConfig();
+      syncSettingsUI();
+      break;
+    case 'toggle-mini':
+      toggleMini();
+      break;
+  }
+}
+
+function toggleMini() {
+  miniMode = !miniMode;
+  const c = document.querySelector('.widget-container');
+  if (c) c.classList.toggle('mini', miniMode);
+  resizeWindow();
+  draw();
+}
+
+function openSettings() {
+  const panel = document.getElementById('settingsPanel');
+  if (!panel) return;
+  settingsWasPlaying = running && !paused;
+  if (settingsWasPlaying) togglePause();
+  syncSettingsUI();
+  renderKeybindList();
+  panel.classList.remove('hidden');
+}
+
+function closeSettings() {
+  const panel = document.getElementById('settingsPanel');
+  if (panel) panel.classList.add('hidden');
+  if (settingsWasPlaying && paused && !gameOver) {
+    settingsWasPlaying = false;
+    togglePause();
+  }
+}
+
+function prettyKey(k) { return k === ' ' ? 'Space' : k; }
+
+function syncSettingsUI() {
+  const g = id => document.getElementById(id);
+  if (!g('optOpacity')) return;
+  g('optOpacity').value = settings.opacity;
+  g('lblOpacity').textContent = Math.round(settings.opacity * 100) + '%';
+  g('optAOT').checked = settings.alwaysOnTop;
+  g('optClickThrough').checked = settings.clickThrough;
+  g('optAutoPause').checked = settings.autoPauseOnBlur;
+  g('optAutoHide').checked = settings.autoHideOnBlur;
+  g('optTitle').value = settings.windowTitle;
+  g('optDas').value = settings.das; g('lblDas').textContent = settings.das + 'ms';
+  g('optArr').value = settings.arr; g('lblArr').textContent = settings.arr + 'ms';
+  g('optSoft').value = settings.softDropMs; g('lblSoft').textContent = settings.softDropMs + 'ms';
+  g('optLock').value = settings.lockDelayMs; g('lblLock').textContent = settings.lockDelayMs + 'ms';
+  g('hkBoss').value = settings.globalHotkeys.boss;
+  g('hkShow').value = settings.globalHotkeys.toggleShow;
+  g('hkClick').value = settings.globalHotkeys.clickThrough;
+  g('hkMini').value = settings.globalHotkeys.mini;
+}
+
+function renderKeybindList() {
+  const list = document.getElementById('keybindList');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const action of Object.keys(ACTION_LABELS)) {
+    const row = document.createElement('div'); row.className = 'kb-row';
+    const name = document.createElement('span'); name.className = 'kb-name'; name.textContent = ACTION_LABELS[action];
+    const keys = document.createElement('span'); keys.className = 'kb-keys';
+    keys.textContent = (settings.keybinds[action] || []).map(prettyKey).join(' / ');
+    const btn = document.createElement('button'); btn.className = 'kb-btn'; btn.textContent = '重绑';
+    btn.addEventListener('click', () => captureKeybind(action, btn, keys));
+    row.appendChild(name); row.appendChild(keys); row.appendChild(btn);
+    list.appendChild(row);
+  }
+}
+
+function captureKeybind(action, btn, keysEl) {
+  capturingKeybind = true;
+  btn.classList.add('capturing');
+  btn.textContent = '按键…';
+  const onKey = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.removeEventListener('keydown', onKey, true);
+    capturingKeybind = false;
+    btn.classList.remove('capturing');
+    btn.textContent = '重绑';
+    if (e.key === 'Escape') return; // cancel
+    settings.keybinds[action] = [e.key];
+    keysEl.textContent = prettyKey(e.key);
+    saveConfig();
+  };
+  window.addEventListener('keydown', onKey, true);
+}
+
+function bindSettingsPanel() {
+  const g = id => document.getElementById(id);
+  if (!g('settingsPanel')) return;
+  g('spClose').addEventListener('click', closeSettings);
+  g('optOpacity').addEventListener('input', e => {
+    settings.opacity = parseFloat(e.target.value);
+    g('lblOpacity').textContent = Math.round(settings.opacity * 100) + '%';
+    if (window.electronAPI) window.electronAPI.setOpacity(settings.opacity);
+    saveConfig();
+  });
+  g('optAOT').addEventListener('change', e => {
+    settings.alwaysOnTop = e.target.checked;
+    if (window.electronAPI) window.electronAPI.setAlwaysOnTop(settings.alwaysOnTop);
+    saveConfig();
+  });
+  g('optClickThrough').addEventListener('change', e => {
+    settings.clickThrough = e.target.checked;
+    applyClickThrough();
+    saveConfig();
+  });
+  g('optAutoPause').addEventListener('change', e => { settings.autoPauseOnBlur = e.target.checked; saveConfig(); });
+  g('optAutoHide').addEventListener('change', e => { settings.autoHideOnBlur = e.target.checked; saveConfig(); });
+  g('optTitle').addEventListener('change', e => {
+    settings.windowTitle = e.target.value || '俄罗斯方块';
+    if (window.electronAPI) window.electronAPI.setTitle(settings.windowTitle);
+    saveConfig();
+  });
+  g('optMini').addEventListener('click', () => toggleMini());
+  g('optDas').addEventListener('input', e => { settings.das = +e.target.value; g('lblDas').textContent = settings.das + 'ms'; saveConfig(); });
+  g('optArr').addEventListener('input', e => { settings.arr = +e.target.value; g('lblArr').textContent = settings.arr + 'ms'; saveConfig(); });
+  g('optSoft').addEventListener('input', e => { settings.softDropMs = +e.target.value; g('lblSoft').textContent = settings.softDropMs + 'ms'; saveConfig(); });
+  g('optLock').addEventListener('input', e => { settings.lockDelayMs = +e.target.value; g('lblLock').textContent = settings.lockDelayMs + 'ms'; saveConfig(); });
+  g('hkApply').addEventListener('click', () => {
+    settings.globalHotkeys = {
+      boss: g('hkBoss').value.trim(),
+      toggleShow: g('hkShow').value.trim(),
+      clickThrough: g('hkClick').value.trim(),
+      mini: g('hkMini').value.trim()
+    };
+    if (window.electronAPI) window.electronAPI.applyGlobalHotkeys(settings.globalHotkeys);
+    saveConfig();
+  });
+  g('ioExport').addEventListener('click', () => { g('ioText').value = JSON.stringify(settings, null, 2); });
+  g('ioImport').addEventListener('click', importSettings);
+  g('ioReset').addEventListener('click', resetSettings);
+}
+
+function importSettings() {
+  const ta = document.getElementById('ioText');
+  try {
+    const obj = JSON.parse(ta.value);
+    settings = Object.assign({}, DEFAULT_SETTINGS, obj);
+    settings.keybinds = Object.assign({}, DEFAULT_SETTINGS.keybinds, obj.keybinds || {});
+    settings.globalHotkeys = Object.assign({}, DEFAULT_SETTINGS.globalHotkeys, obj.globalHotkeys || {});
+    applySettings();
+    syncSettingsUI();
+    renderKeybindList();
+    saveConfig();
+  } catch (e) {
+    ta.value = 'JSON 解析失败：' + e.message;
+  }
+}
+
+function resetSettings() {
+  settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  applySettings();
+  syncSettingsUI();
+  renderKeybindList();
+  saveConfig();
 }
 
 // ===================== 单测导出（node） =====================
