@@ -103,12 +103,15 @@ AI 模式下游戏结束 5 秒后自动重开（适合当桌面演示）。按 *
 ```bash
 npm install        # 安装依赖（Electron）
 npm start          # 开发运行
-npm run build      # 打包 Windows portable 单 exe（输出 release/）
-npm test           # 运行引擎单元测试（node，纯逻辑，30 条断言）
-npm run verify     # 离屏加载真实渲染器、脚本化驱动并截图（产出 verify_shots/）
+npm run build      # 打包 → 单文件便携版 release/俄罗斯方块-1.0.0.exe
+npm test           # 引擎单元测试（node 纯逻辑，43 条断言）
+npm run bench      # AI 策略基准对比
+npm run verify     # 离屏加载真实渲染器并截图验证（产出 verify_shots/）
 ```
 
-要求 Node ≥ 18。主攻平台：Windows。
+- 产物 **`release/俄罗斯方块-1.0.0.exe` 是单文件便携版**，双击即玩、免安装、无需 Node/npm。
+- `npm run build` 分两步（已串好）：先用 `@electron/packager` 产出未打包应用（`npm run pack`，不触发 winCodeSign），再用 electron-builder `--prepackaged` 包成单文件便携版、并跳过签名（`CSC_IDENTITY_AUTO_DISCOVERY=false`）。这样在「无管理员 / 未开开发者模式」的 Windows 上也能一键构建——绕开 electron-builder 解压 winCodeSign 内 macOS 符号链接时的权限报错（`客户端没有所需的特权`）。
+- 要求 Node ≥ 18。主攻平台：Windows。
 
 ## 项目结构
 

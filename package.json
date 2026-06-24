@@ -6,7 +6,8 @@
   "author": "Kimi User",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
+    "pack": "electron-packager . 俄罗斯方块 --platform=win32 --arch=x64 --out=release/app --overwrite --icon=icon.ico --app-version=1.0.0 --ignore=\"(release|verify_shots|test|tools|\\.git|\\.github)\"",
+    "build": "npm run pack && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win portable --prepackaged \"release/app/俄罗斯方块-win32-x64\"",
     "test": "node test/core.test.js && node test/ai.test.js",
     "bench": "node benchmark_ai.js",
     "verify": "electron tools/verify_visual.js"
@@ -32,6 +33,7 @@
     }
   },
   "devDependencies": {
+    "@electron/packager": "^20.0.1",
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3"
   }
