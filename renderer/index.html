@@ -14,6 +14,8 @@
       <button class="icon-btn" id="speedBtn" title="切换速度">⚡</button>
       <button class="icon-btn" id="playBtn" title="开始/暂停">▶</button>
       <button class="icon-btn" id="restartBtn" title="重新开始">↻</button>
+      <button class="icon-btn" id="moyuBtn" title="摸鱼模式：配色贴近 Claude Desktop，贴顶置顶显示，小键盘 1 瞬间隐藏">🐟</button>
+      <button class="icon-btn" id="effectBtn" title="特效模式：程序生成音乐 + 逐关配色/调式同步">🎵</button>
       <button class="icon-btn" id="settingsBtn" title="设置">⚙</button>
       <button class="icon-btn close-btn" id="closeBtn" title="退出">×</button>
     </div>
@@ -36,8 +38,8 @@
           <div class="info-row"><span class="info-key">分数</span><span class="info-val" id="scoreText">0</span></div>
           <div class="info-row"><span class="info-key">等级</span><span class="info-val" id="levelText">1</span></div>
           <div class="info-row"><span class="info-key">行数</span><span class="info-val" id="linesText">0</span></div>
-          <div class="info-row"><span class="info-key">时间</span><span class="info-val" id="timeText">—</span></div>
-          <div class="info-row"><span class="info-key">最佳</span><span class="info-val" id="recordText">0</span></div>
+          <div class="info-row"><span class="info-key" id="timeLabel">时间</span><span class="info-val" id="timeText">—</span></div>
+          <div class="info-row"><span class="info-key" id="recordLabel">最佳</span><span class="info-val" id="recordText">0</span></div>
         </div>
       </div>
     </div>
@@ -75,6 +77,7 @@
         <label class="sp-row"><span>显示/隐藏</span><input type="text" id="hkShow"></label>
         <label class="sp-row"><span>鼠标穿透</span><input type="text" id="hkClick"></label>
         <label class="sp-row"><span>Mini</span><input type="text" id="hkMini"></label>
+        <label class="sp-row"><span>摸鱼瞬间消失</span><input type="text" id="hkVanish"></label>
         <button class="sp-btn" id="hkApply">应用全局热键</button>
 
         <div class="sp-sec">成就</div>

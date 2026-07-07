@@ -21,7 +21,8 @@ let globalHotkeys = {
   boss: 'Control+Alt+B',
   toggleShow: 'Control+Alt+H',
   clickThrough: 'Control+Alt+T',
-  mini: 'Control+Alt+M'
+  mini: 'Control+Alt+M',
+  vanish: 'num1' // 摸鱼模式：小键盘 1 瞬间隐藏（NumLock 需开启）
 };
 
 // ========== 配置持久化 ==========
@@ -183,6 +184,14 @@ function unboss() {
 }
 function toggleBoss() { bossActive ? unboss() : bossOn(); }
 
+// ========== 摸鱼模式：瞬间消失（无伪装弹窗，直接隐藏） ==========
+function instantVanish() {
+  bossActive = false;
+  hideDisguise();
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+  notifyRenderer({ type: 'hidden' });
+}
+
 // ========== 可见性 ==========
 function isVisible() { return mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible(); }
 function setVisible(v) {
@@ -223,6 +232,7 @@ function registerGlobalShortcuts() {
   reg(globalHotkeys.toggleShow, () => setVisible(!isVisible()));
   reg(globalHotkeys.clickThrough, () => notifyRenderer({ type: 'toggle-clickthrough' }));
   reg(globalHotkeys.mini, () => notifyRenderer({ type: 'toggle-mini' }));
+  reg(globalHotkeys.vanish, instantVanish);
 }
 
 // ========== IPC ==========
@@ -249,6 +259,15 @@ ipcMain.handle('set-click-through', (e, on) => {
 });
 ipcMain.handle('set-title', (e, t) => { if (mainWindow && t) mainWindow.setTitle(String(t)); });
 ipcMain.handle('set-always-on-top', (e, on) => { if (mainWindow) mainWindow.setAlwaysOnTop(!!on); });
+ipcMain.handle('snap-top', () => {
+  if (!mainWindow) return;
+  const b = mainWindow.getBounds();
+  const area = screen.getDisplayNearestPoint({ x: b.x + b.width / 2, y: b.y + b.height / 2 }).workArea;
+  const x = area.x + Math.round((area.width - b.width) / 2);
+  mainWindow.setBounds({ x, y: area.y, width: b.width, height: b.height });
+  mainWindow.setAlwaysOnTop(true);
+  saveWindowBounds();
+});
 ipcMain.handle('set-visible', (e, v) => setVisible(!!v));
 ipcMain.handle('toggle-boss', () => toggleBoss());
 ipcMain.handle('apply-global-hotkeys', (e, hk) => {

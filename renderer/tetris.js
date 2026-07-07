@@ -114,6 +114,7 @@ const DEFAULT_SETTINGS = {
   windowTitle: '俄罗斯方块',
   theme: 'classic',
   muted: true,
+  effectMode: false, // 方块效应：程序生成音乐 + 逐关配色/调式同步
   // input bindings (each action -> list of e.key values)
   keybinds: {
     moveLeft: ['ArrowLeft', 'a', 'A'],
@@ -130,7 +131,8 @@ const DEFAULT_SETTINGS = {
     boss: 'Control+Alt+B',
     toggleShow: 'Control+Alt+H',
     clickThrough: 'Control+Alt+T',
-    mini: 'Control+Alt+M'
+    mini: 'Control+Alt+M',
+    vanish: 'num1' // 摸鱼模式：小键盘 1 瞬间隐藏
   }
 };
 
@@ -146,8 +148,23 @@ const THEMES = {
   classic: { name: '经典', bg: '#0b1a0b', grid: 'rgba(126,231,135,0.05)', colors: { I: '#36d1dc', O: '#fbbf24', T: '#a78bfa', S: '#4ade80', Z: '#f87171', J: '#60a5fa', L: '#fb923c', G: '#6b7280' } },
   mono:    { name: '极简', bg: '#0d0d0f', grid: 'rgba(255,255,255,0.05)', colors: { I: '#e5e7eb', O: '#d1d5db', T: '#cbd5e1', S: '#9ca3af', Z: '#a8adb8', J: '#b0b6c0', L: '#dfe3ea', G: '#4b5563' } },
   neon:    { name: '霓虹', bg: '#0a0a12', grid: 'rgba(0,255,255,0.06)', colors: { I: '#00f0ff', O: '#fff200', T: '#ff00e6', S: '#00ff85', Z: '#ff003c', J: '#2979ff', L: '#ff9100', G: '#3a3a4a' } },
-  pastel:  { name: '马卡龙', bg: '#1a1620', grid: 'rgba(255,255,255,0.05)', colors: { I: '#a0e7e5', O: '#fbe7a1', T: '#c3aed6', S: '#b5ead7', Z: '#ffb3ba', J: '#a2d2ff', L: '#ffd6a5', G: '#6b7280' } }
+  pastel:  { name: '马卡龙', bg: '#1a1620', grid: 'rgba(255,255,255,0.05)', colors: { I: '#a0e7e5', O: '#fbe7a1', T: '#c3aed6', S: '#b5ead7', Z: '#ffb3ba', J: '#a2d2ff', L: '#ffd6a5', G: '#6b7280' } },
+  // 摸鱼模式：配色对齐 Claude Desktop 浅色界面（暖米白底 + 低对比中性色块），远看像一块普通面板
+  moyu:    { name: '摸鱼', bg: '#faf9f5', grid: 'rgba(20,20,19,0.05)', colors: { I: '#d97757', O: '#c9c7bd', T: '#b0aea5', S: '#a39d8f', Z: '#8f8a7c', J: '#736f63', L: '#e8e6dc', G: '#dedcd2' } }
 };
+
+// 特效模式（俄罗斯方块效应式）：每套除了配色，还带 root(根音Hz) + scale(音阶半音偏移数组)，
+// 关卡切换时画面配色和音乐调式一起换，效果模式开启时 activeTheme 直接指向这里而不经过 THEMES/settings.theme。
+const EFFECT_PALETTES = [
+  { name: '黎明', bg: '#0f1226', grid: 'rgba(255,255,255,0.05)', colors: { I: '#7dd3fc', O: '#fde68a', T: '#c4b5fd', S: '#86efac', Z: '#fca5a5', J: '#93c5fd', L: '#fdba74', G: '#334155' }, root: 261.63, scale: [0, 2, 4, 7, 9] },
+  { name: '热带', bg: '#031f1a', grid: 'rgba(255,255,255,0.05)', colors: { I: '#2dd4bf', O: '#fbbf24', T: '#f472b6', S: '#4ade80', Z: '#fb7185', J: '#38bdf8', L: '#fb923c', G: '#134e4a' }, root: 293.66, scale: [0, 2, 4, 7, 9] },
+  { name: '霓虹都市', bg: '#0a0014', grid: 'rgba(255,0,255,0.06)', colors: { I: '#00e5ff', O: '#ffea00', T: '#ff00e5', S: '#00ff9c', Z: '#ff2d55', J: '#448aff', L: '#ff9100', G: '#3a0a4a' }, root: 329.63, scale: [0, 3, 5, 7, 10] },
+  { name: '深海', bg: '#001220', grid: 'rgba(255,255,255,0.05)', colors: { I: '#22d3ee', O: '#a5f3fc', T: '#818cf8', S: '#2dd4bf', Z: '#f87171', J: '#60a5fa', L: '#facc15', G: '#0e3a52' }, root: 349.23, scale: [0, 2, 3, 7, 9] },
+  { name: '熔岩', bg: '#1a0500', grid: 'rgba(255,120,0,0.06)', colors: { I: '#fb923c', O: '#fde047', T: '#f87171', S: '#fbbf24', Z: '#dc2626', J: '#ef4444', L: '#facc15', G: '#3f0d02' }, root: 392.00, scale: [0, 1, 4, 5, 7, 8, 11] },
+  { name: '极光', bg: '#04120f', grid: 'rgba(0,255,200,0.06)', colors: { I: '#5eead4', O: '#a7f3d0', T: '#67e8f9', S: '#34d399', Z: '#f472b6', J: '#7dd3fc', L: '#fde047', G: '#0f3d33' }, root: 440.00, scale: [0, 2, 4, 7, 9] },
+  { name: '紫夜', bg: '#0d0620', grid: 'rgba(180,120,255,0.06)', colors: { I: '#c4b5fd', O: '#fbcfe8', T: '#a78bfa', S: '#93c5fd', Z: '#f9a8d4', J: '#818cf8', L: '#fcd34d', G: '#2e1a4a' }, root: 493.88, scale: [0, 2, 4, 7, 9] },
+  { name: '金昼', bg: '#1a1200', grid: 'rgba(255,215,0,0.06)', colors: { I: '#fde68a', O: '#fbbf24', T: '#fcd34d', S: '#facc15', Z: '#f59e0b', J: '#eab308', L: '#fef08a', G: '#3d2e00' }, root: 523.25, scale: [0, 2, 4, 7, 9] }
+];
 
 const AI_STEP_MS = 30; // how often the AI performs one alignment step
 
@@ -327,6 +344,7 @@ let settingsWasPlaying = false;
 
 // theme
 let activeTheme = THEMES.classic;
+let prevThemeBeforeMoyu = 'classic'; // remembers which theme to restore when leaving 摸鱼模式
 
 // modes / leaderboard
 let mode = 'marathon';
@@ -338,8 +356,18 @@ let records = {};
 let shakeUntil = 0;
 let shakeMag = 0;
 let flashUntil = 0;
+let flashColor = '#ffffff';
 let particles = [];
 let audioCtx = null;
+
+// 对战模式：本地AI机器人
+let bots = [];
+let battleLog = '';
+let battleFinalRank = 0;
+
+// 特效模式：程序生成音乐 + 逐关配色
+let musicTimer = null;
+let musicStep = 0;
 
 // achievements
 let unlockedAch = new Set();
@@ -374,6 +402,8 @@ function init() {
     settings.keybinds = Object.assign({}, DEFAULT_SETTINGS.keybinds, settings.keybinds || {});
     settings.globalHotkeys = Object.assign({}, DEFAULT_SETTINGS.globalHotkeys, settings.globalHotkeys || {});
     applyTheme(settings.theme);
+    if (settings.effectMode) { applyEffectPalette(); ensureEffectMusic(); }
+    updateEffectBtn();
     records = config.records || {};
     unlockedAch = new Set(config.achievements || []);
     mode = MODES[config.mode] ? config.mode : 'marathon';
@@ -438,6 +468,8 @@ function bindControls() {
     startLoop();
     updateUI();
   });
+  wire('moyuBtn', () => toggleMoyuMode());
+  wire('effectBtn', () => toggleEffectMode());
   wire('settingsBtn', () => openSettings());
   wire('closeBtn', () => window.electronAPI.quitApp());
 }
@@ -616,6 +648,8 @@ function gameLoop(now) {
   if (currentPiece && !gameOver && !paused) {
     tickMode(dt); // mode timer (Ultra countdown can end the game)
     if (gameOver) { draw(); updateUI(); return; }
+    updateBattle(dt); // battle 模式：机器人对手落子/攻击（可能触发胜利）
+    if (gameOver) { draw(); updateUI(); return; }
     if (aiMode !== 0) {
       aiAcc += dt;
       while (aiAcc >= AI_STEP_MS) {
@@ -710,6 +744,8 @@ function resetGame() {
   particles = [];
   shakeUntil = 0;
   flashUntil = 0;
+  battleLog = '';
+  battleFinalRank = 0;
   bag = new BagRandomizer();
 
   const info = CANVAS_SIZES[sizeKey];
@@ -853,6 +889,7 @@ function lockPiece() {
   if (cleared > 0) triggerClearJuice(cleared, tSpin, fullRows, clearCells);
   else playSound('lock');
   onModeClear(cleared); // sprint goal / cheese garbage refill (may end the game)
+  if (mode === 'battle' && cleared > 0) resolveAttack('player', cleared);
 
   currentPiece = null;
   if (gameOver) { draw(); updateUI(); return; }
@@ -926,6 +963,10 @@ function endGame() {
   updateModeRecord();
   if (mode === 'ultra' && gameWon) unlockAch('ultra_done');
   if (mode === 'sprint' && gameWon && modeElapsedMs < 60000) unlockAch('sprint_sub60');
+  if (mode === 'battle') {
+    battleFinalRank = gameWon ? 1 : battleRank();
+    if (gameWon) unlockAch('battle_win');
+  }
   saveConfig();
   if (aiMode !== 0) scheduleAutoRestart();
 }
@@ -973,8 +1014,38 @@ function aiStep() {
 // ===================== 绘制 =====================
 function pieceColor(t) { return (activeTheme && activeTheme.colors[t]) || '#888888'; }
 function applyTheme(key) {
+  const prevTheme = settings.theme;
   activeTheme = THEMES[key] ? THEMES[key] : THEMES.classic;
   settings.theme = THEMES[key] ? key : 'classic';
+  const c = document.querySelector('.widget-container');
+  if (c) c.classList.toggle('moyu', settings.theme === 'moyu');
+  updateMoyuBtn();
+  // Entering 摸鱼模式: pin to the top of the screen and force always-on-top.
+  if (settings.theme === 'moyu' && prevTheme !== 'moyu') {
+    settings.alwaysOnTop = true;
+    if (window.electronAPI) {
+      window.electronAPI.setAlwaysOnTop(true).catch(() => {});
+      if (window.electronAPI.snapTop) window.electronAPI.snapTop().catch(() => {});
+    }
+  }
+}
+
+function updateMoyuBtn() {
+  const btn = document.getElementById('moyuBtn');
+  if (btn) btn.classList.toggle('active', settings.theme === 'moyu');
+}
+
+// 摸鱼模式一键开关：进入时记住原配色，退出时还原。
+function toggleMoyuMode() {
+  if (settings.theme === 'moyu') {
+    applyTheme(prevThemeBeforeMoyu || 'classic');
+  } else {
+    prevThemeBeforeMoyu = settings.theme;
+    applyTheme('moyu');
+  }
+  draw();
+  syncSettingsUI();
+  saveConfig();
 }
 
 function draw() {
@@ -1026,7 +1097,11 @@ function draw() {
   ctx.restore(); // end shake transform
   drawFlash();
 
-  if (gameOver) drawOverlay(ctx, canvas.width, canvas.height, gameWon ? winText() : '游戏结束');
+  if (gameOver) {
+    let overlayText = gameWon ? winText() : '游戏结束';
+    if (mode === 'battle' && !gameWon) overlayText = '出局 · 排名 ' + battleFinalRank + '/' + (BATTLE_BOT_COUNT + 1);
+    drawOverlay(ctx, canvas.width, canvas.height, overlayText);
+  }
   else if (paused && currentPiece) drawOverlay(ctx, canvas.width, canvas.height, '已暂停');
 
   if (settings.aiDebug && aiMode !== 0 && aiPlanDebug) drawAIDebug();
@@ -1079,7 +1154,7 @@ function drawGhost() {
 function drawOverlay(context, w, h, text) {
   context.fillStyle = 'rgba(0, 0, 0, 0.65)';
   context.fillRect(0, 0, w, h);
-  context.fillStyle = text === '游戏结束' ? '#ff9f9f' : '#fde68a';
+  context.fillStyle = (text === '游戏结束' || text.indexOf('出局') === 0) ? '#ff9f9f' : '#fde68a';
   context.font = 'bold 14px Microsoft YaHei, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
@@ -1153,8 +1228,19 @@ function updateUI() {
   set('levelText', level);
   set('linesText', lines);
   set('modeText', (MODES[mode] || MODES.marathon).name);
-  set('timeText', modeTimeDisplay());
-  set('recordText', modeRecordDisplay());
+  const timeLabel = document.getElementById('timeLabel');
+  const recordLabel = document.getElementById('recordLabel');
+  if (mode === 'battle') {
+    if (timeLabel) timeLabel.textContent = '存活';
+    if (recordLabel) recordLabel.textContent = '播报';
+    set('timeText', aliveBotCount() + '/' + BATTLE_BOT_COUNT);
+    set('recordText', battleLog || '—');
+  } else {
+    if (timeLabel) timeLabel.textContent = '时间';
+    if (recordLabel) recordLabel.textContent = '最佳';
+    set('timeText', modeTimeDisplay());
+    set('recordText', modeRecordDisplay());
+  }
   set('highScoreText', highScore);
   const playBtn = document.getElementById('playBtn');
   if (playBtn) playBtn.textContent = paused ? '▶' : '⏸';
@@ -1267,6 +1353,7 @@ function syncSettingsUI() {
   g('hkShow').value = settings.globalHotkeys.toggleShow;
   g('hkClick').value = settings.globalHotkeys.clickThrough;
   g('hkMini').value = settings.globalHotkeys.mini;
+  g('hkVanish').value = settings.globalHotkeys.vanish;
 }
 
 function renderKeybindList() {
@@ -1341,7 +1428,8 @@ function bindSettingsPanel() {
       boss: g('hkBoss').value.trim(),
       toggleShow: g('hkShow').value.trim(),
       clickThrough: g('hkClick').value.trim(),
-      mini: g('hkMini').value.trim()
+      mini: g('hkMini').value.trim(),
+      vanish: g('hkVanish').value.trim()
     };
     if (window.electronAPI) window.electronAPI.applyGlobalHotkeys(settings.globalHotkeys);
     saveConfig();
@@ -1395,7 +1483,9 @@ const SOUND_CFG = {
   clear:   { wave: 'sine',     freq: 520, slide: 780, dur: 0.18, vol: 0.09 },
   tetris:  { wave: 'sawtooth', freq: 440, slide: 880, dur: 0.30, vol: 0.11 },
   levelup: { wave: 'sine',     freq: 660, slide: 990, dur: 0.25, vol: 0.10 },
-  over:    { wave: 'sawtooth', freq: 300, slide: 80,  dur: 0.50, vol: 0.10 }
+  over:    { wave: 'sawtooth', freq: 300, slide: 80,  dur: 0.50, vol: 0.10 },
+  attackOut: { wave: 'square',   freq: 380, slide: 620, dur: 0.14, vol: 0.09 },
+  attackIn:  { wave: 'sawtooth', freq: 200, slide: 90,  dur: 0.22, vol: 0.11 }
 };
 
 function nowMs() { return (typeof performance !== 'undefined' ? performance.now() : Date.now()); }
@@ -1410,8 +1500,16 @@ function playSound(type) {
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = cfg.wave;
-    o.frequency.setValueAtTime(cfg.freq, t);
-    if (cfg.slide) o.frequency.exponentialRampToValueAtTime(cfg.slide, t + cfg.dur);
+    // 特效模式：消行/锁定/升级音效从当前调式取音，随连击级联升高——零延迟，操作即演出。
+    let freq = cfg.freq, slide = cfg.slide;
+    if (settings.effectMode && (type === 'clear' || type === 'tetris' || type === 'lock' || type === 'levelup')) {
+      const p = paletteForLevel(level);
+      const idx = type === 'lock' ? 0 : Math.max(0, combo) + (type === 'levelup' ? 4 : 0);
+      freq = noteFreq(p.root, p.scale, idx);
+      if (cfg.slide) slide = freq * 1.5;
+    }
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + cfg.dur);
     g.gain.setValueAtTime(cfg.vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + cfg.dur);
     o.connect(g); g.connect(audioCtx.destination);
@@ -1419,19 +1517,99 @@ function playSound(type) {
   } catch (e) { /* audio unavailable */ }
 }
 
+// ===================== 特效模式：程序生成音乐引擎（无外部音乐文件，纯 Web Audio 合成） =====================
+function paletteForLevel(lvl) {
+  return EFFECT_PALETTES[(Math.max(1, lvl) - 1) % EFFECT_PALETTES.length];
+}
+
+// idx 可以超出 scale.length，超出部分自动折算到高八度，保证连击越高音高越亮。
+function noteFreq(root, scale, idx) {
+  const n = scale.length;
+  const semis = scale[((idx % n) + n) % n] + 12 * Math.floor(idx / n);
+  return root * Math.pow(2, semis / 12);
+}
+
+function playTone(freq, dur, vol, wave) {
+  if (typeof window === 'undefined' || !(window.AudioContext || window.webkitAudioContext)) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = wave || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur);
+  } catch (e) { /* audio unavailable */ }
+}
+
+// 背景氛围琶音：低音量、低八度，节奏跟随当前重力速度换算出的 BPM。
+function musicTick() {
+  if (!settings.effectMode || settings.muted) return;
+  const p = paletteForLevel(level);
+  playTone(noteFreq(p.root / 2, p.scale, musicStep), 0.9, 0.025, 'sine');
+  musicStep++;
+}
+
+function ensureEffectMusic() {
+  if (musicTimer || settings.muted) return;
+  const bpm = Math.max(60, Math.min(160, 60000 / gravityMs()));
+  musicTimer = setInterval(musicTick, 60000 / bpm);
+}
+
+function stopEffectMusic() {
+  if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+}
+
+// 升级时重启一遍，好让 BPM/调式跟上新的关卡（interval 一旦建立不会自己变速）。
+function restartEffectMusic() {
+  stopEffectMusic();
+  ensureEffectMusic();
+}
+
+function applyEffectPalette() {
+  if (!settings.effectMode) return;
+  activeTheme = paletteForLevel(level);
+}
+
+function updateEffectBtn() {
+  const btn = document.getElementById('effectBtn');
+  if (btn) btn.classList.toggle('active', !!settings.effectMode);
+}
+
+function toggleEffectMode() {
+  settings.effectMode = !settings.effectMode;
+  if (settings.effectMode) {
+    applyEffectPalette();
+    ensureEffectMusic();
+  } else {
+    applyTheme(settings.theme); // 交回给普通主题系统（含摸鱼模式的 .moyu class）
+    stopEffectMusic();
+  }
+  updateEffectBtn();
+  draw();
+  saveConfig();
+}
+
 function triggerClearJuice(cleared, tSpin, rows, cellsList) {
   const big = cleared >= 4 || tSpin !== 'none';
   const now = nowMs();
   shakeMag = big ? 8 : 2 + cleared * 1.5;
   shakeUntil = now + (big ? 260 : 160);
+  flashColor = '#ffffff';
   flashUntil = now + (big ? 150 : 90);
   spawnParticles(rows, cellsList);
   playSound(big ? 'tetris' : 'clear');
 }
 
 function triggerLevelUp() {
+  flashColor = '#ffffff';
   flashUntil = nowMs() + 150;
   playSound('levelup');
+  if (settings.effectMode) { applyEffectPalette(); restartEffectMusic(); }
 }
 
 function spawnParticles(rows, cellsList) {
@@ -1473,7 +1651,7 @@ function drawFlash() {
   if (now < flashUntil) {
     ctx.save();
     ctx.globalAlpha = 0.45 * Math.max(0, (flashUntil - now) / 150);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = flashColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
   }
@@ -1486,9 +1664,10 @@ const MODES = {
   ultra:    { name: 'Ultra2:00', timed: 'down', durationMs: 120000 },
   zen:      { name: 'Zen', noTopOut: true },
   cheese:   { name: 'Cheese', garbage: 9 },
-  daily:    { name: '每日挑战', seeded: true }
+  daily:    { name: '每日挑战', seeded: true },
+  battle:   { name: '大逃杀', battle: true }
 };
-const MODE_LIST = ['marathon', 'sprint', 'ultra', 'zen', 'cheese', 'daily'];
+const MODE_LIST = ['marathon', 'sprint', 'ultra', 'zen', 'cheese', 'daily', 'battle'];
 
 function makeSeededRng(seed) {
   let s = (seed >>> 0) || 1;
@@ -1518,6 +1697,7 @@ function setupMode() {
   const cfg = MODES[mode] || MODES.marathon;
   if (cfg.seeded) bag = new BagRandomizer(makeSeededRng(dailySeed())); // deterministic daily
   if (cfg.garbage) addGarbageRows(cfg.garbage);
+  if (cfg.battle) initBattle();
 }
 
 function addGarbageRows(n) {
@@ -1534,6 +1714,128 @@ function countGarbageRows() {
   let n = 0;
   for (let r = 0; r < board.length; r++) if (board[r].some(c => c === 'G')) n++;
   return n;
+}
+
+// ===================== 对战模式：本地AI机器人（俄罗斯方块99式大逃杀，无联网） =====================
+// 机器人棋盘固定标准 10×20（不跟随玩家 size 设置），落子决策直接复用 ai.js 的纯函数
+// TetrisAI.chooseMove / landingRow / clearRows，全程不碰玩家的全局 board/currentPiece。
+const BOT_TIER_ROSTER = ['weak', 'weak', 'weak', 'weak', 'normal', 'normal', 'normal', 'normal', 'insane'];
+const BATTLE_BOT_COUNT = BOT_TIER_ROSTER.length;
+const ATTACK_TABLE = [0, 0, 1, 2, 4]; // 消行数(0-4) -> 送出的垃圾行数，沿用竞技俄罗斯方块惯例
+
+function makeEmptyBotBoard() {
+  return Array.from({ length: 20 }, () => new Array(10).fill(null));
+}
+
+function botIntervalFor(tier) {
+  const base = tier === 'insane' ? 480 : tier === 'normal' ? 700 : 950;
+  return base * (0.85 + Math.random() * 0.3); // 抖动节奏，避免所有机器人同帧计算
+}
+
+function initBattle() {
+  bots = BOT_TIER_ROSTER.map((tier, i) => {
+    const b = { id: i + 1, tier, board: makeEmptyBotBoard(), bag: new BagRandomizer(), holdType: null, nextType: null, alive: true, decideAcc: Math.random() * 400, decideInterval: botIntervalFor(tier) };
+    b.nextType = b.bag.next();
+    return b;
+  });
+  battleLog = '';
+}
+
+// 与 ai.js 内部 stamp() 同构，只是把布尔值换成方块类型字母，方便复用 TetrisAI.clearRows()。
+function botStamp(board, shape, row, col, type) {
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (!shape[r][c]) continue;
+      const br = row + r, bc = col + c;
+      if (br >= 0 && br < board.length && bc >= 0 && bc < board[0].length) board[br][bc] = type;
+    }
+  }
+  return board;
+}
+
+function botTopOut(board) {
+  return board[0].some(c => c != null) || board[1].some(c => c != null);
+}
+
+function eliminateBot(bot) {
+  if (!bot.alive) return;
+  bot.alive = false;
+  battleLog = 'BOT' + bot.id + ' 出局';
+}
+
+function addBotGarbage(bot, n) {
+  for (let i = 0; i < n; i++) {
+    const row = new Array(10).fill('G');
+    row[Math.floor(Math.random() * 10)] = null;
+    bot.board.shift();
+    bot.board.push(row);
+  }
+  if (botTopOut(bot.board)) eliminateBot(bot);
+}
+
+function aliveBotCount() {
+  return bots.filter(b => b.alive).length;
+}
+
+// 存活对象池里随机挑一个攻击目标（V1 不做定向策略，保持简单）。sourceId 是 'player' 或机器人 id。
+function pickAttackTarget(sourceId) {
+  const pool = [];
+  if (sourceId !== 'player' && !gameOver) pool.push('player');
+  for (const b of bots) if (b.alive && b.id !== sourceId) pool.push(b.id);
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function resolveAttack(sourceId, cleared) {
+  if (mode !== 'battle') return;
+  const n = ATTACK_TABLE[Math.min(cleared, 4)] || 0;
+  if (n <= 0) return;
+  const target = pickAttackTarget(sourceId);
+  if (target == null) return;
+  if (sourceId === 'player') playSound('attackOut');
+  if (target === 'player') {
+    addGarbageRows(n);
+    flashColor = '#ff4d4f';
+    shakeMag = Math.max(shakeMag, 4 + n * 1.5);
+    shakeUntil = Math.max(shakeUntil, nowMs() + 220);
+    flashUntil = Math.max(flashUntil, nowMs() + 160);
+    playSound('attackIn');
+  } else {
+    const bot = bots.find(b => b.id === target);
+    if (bot) addBotGarbage(bot, n);
+  }
+}
+
+function botDecide(bot) {
+  const res = TetrisAI.chooseMove(bot.board, bot.nextType, [], bot.holdType, { shapes: SHAPES, tier: bot.tier, canHold: false });
+  if (!res) { eliminateBot(bot); return; }
+  const shape = SHAPES[bot.nextType][res.rotation];
+  const row = TetrisAI.landingRow(bot.board, shape, res.col);
+  if (row == null) { eliminateBot(bot); return; }
+  botStamp(bot.board, shape, row, res.col, bot.nextType);
+  const { board: clearedBoard, cleared } = TetrisAI.clearRows(bot.board);
+  bot.board = clearedBoard;
+  bot.nextType = bot.bag.next();
+  if (botTopOut(bot.board)) { eliminateBot(bot); return; }
+  if (cleared > 0) resolveAttack(bot.id, cleared);
+}
+
+function updateBattle(dt) {
+  if (mode !== 'battle') return;
+  for (const bot of bots) {
+    if (!bot.alive) continue;
+    bot.decideAcc += dt;
+    while (bot.decideAcc >= bot.decideInterval && bot.alive) {
+      bot.decideAcc -= bot.decideInterval;
+      botDecide(bot);
+    }
+  }
+  if (!gameOver && running && aliveBotCount() === 0) { gameWon = true; endGame(); }
+}
+
+// 你出局时的名次：仍存活的机器人数 + 1（吃鸡时 aliveBotCount()===0，名次恒为1）。
+function battleRank() {
+  return aliveBotCount() + 1;
 }
 
 function tickMode(dt) {
@@ -1588,6 +1890,7 @@ function modeRecordDisplay() {
 function winText() {
   if (mode === 'sprint') return '完成 ' + formatTime(modeElapsedMs);
   if (mode === 'ultra') return '时间到 ' + score;
+  if (mode === 'battle') return '吃鸡！排名 1/' + (BATTLE_BOT_COUNT + 1);
   return '完成';
 }
 
@@ -1613,7 +1916,8 @@ const ACHIEVEMENTS = [
   { id: 'lines100', name: '百行', desc: '单局消除 100 行' },
   { id: 'sprint_sub60', name: '闪电40', desc: 'Sprint 40 行用时 < 60 秒' },
   { id: 'ultra_done', name: '两分钟', desc: '完成一局 Ultra' },
-  { id: 'b2b3', name: '连战连捷', desc: '连续 3 次难度消除（B2B）' }
+  { id: 'b2b3', name: '连战连捷', desc: '连续 3 次难度消除（B2B）' },
+  { id: 'battle_win', name: '大逃杀冠军', desc: '在大逃杀模式吃鸡' }
 ];
 
 function unlockAch(id) {

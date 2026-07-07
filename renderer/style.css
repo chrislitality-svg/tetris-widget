@@ -13,23 +13,61 @@ html, body {
   user-select: none;
 }
 
+:root {
+  --wc-bg: rgba(30, 30, 38, 0.92);
+  --wc-shadow: rgba(0, 0, 0, 0.4);
+  --wc-border: rgba(255, 255, 255, 0.08);
+  --wc-text: #fff;
+  --panel-bg: rgba(0, 0, 0, 0.35);
+  --panel-border: rgba(255, 255, 255, 0.06);
+  --label-color: rgba(255, 255, 255, 0.35);
+  --val-color: rgba(255, 255, 255, 0.75);
+  --icon-bg: rgba(255, 255, 255, 0.06);
+  --icon-color: rgba(255, 255, 255, 0.55);
+  --icon-hover-bg: rgba(255, 255, 255, 0.14);
+  --icon-hover-color: #fff;
+  --accent-bg: rgba(126, 231, 135, 0.3);
+  --accent-text: #d1fae5;
+  --accent-glow: rgba(126, 231, 135, 0.2);
+}
+
+/* 摸鱼模式：整体配色对齐 Claude Desktop（暖米白底 + 低对比中性色) */
+.widget-container.moyu {
+  --wc-bg: rgba(250, 249, 245, 0.97);
+  --wc-shadow: rgba(20, 20, 19, 0.16);
+  --wc-border: rgba(20, 20, 19, 0.08);
+  --wc-text: #141413;
+  --panel-bg: rgba(232, 230, 220, 0.55);
+  --panel-border: rgba(20, 20, 19, 0.08);
+  --label-color: rgba(20, 20, 19, 0.4);
+  --val-color: rgba(20, 20, 19, 0.78);
+  --icon-bg: rgba(20, 20, 19, 0.05);
+  --icon-color: rgba(20, 20, 19, 0.45);
+  --icon-hover-bg: rgba(20, 20, 19, 0.1);
+  --icon-hover-color: #141413;
+  --accent-bg: rgba(217, 119, 87, 0.22);
+  --accent-text: #a34e30;
+  --accent-glow: rgba(217, 119, 87, 0.18);
+}
+
 .widget-container {
   width: 100%;
   min-height: 100%;
-  background: rgba(30, 30, 38, 0.92);
+  background: var(--wc-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 14px 12px 12px;
-  color: #fff;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--wc-text);
+  box-shadow: 0 10px 40px var(--wc-shadow);
+  border: 1px solid var(--wc-border);
   -webkit-app-region: drag;
   cursor: default;
   display: flex;
   flex-direction: column;
   gap: 10px;
   position: relative;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
 /* mini mode: board only */
@@ -48,8 +86,8 @@ html, body {
   height: 22px;
   border-radius: 6px;
   border: none;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.55);
+  background: var(--icon-bg);
+  color: var(--icon-color);
   font-size: 11px;
   line-height: 1;
   cursor: pointer;
@@ -60,14 +98,14 @@ html, body {
 }
 
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  background: var(--icon-hover-bg);
+  color: var(--icon-hover-color);
 }
 
 .icon-btn.active {
-  background: rgba(126, 231, 135, 0.3);
-  color: #d1fae5;
-  box-shadow: 0 0 8px rgba(126, 231, 135, 0.2);
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  box-shadow: 0 0 8px var(--accent-glow);
 }
 
 .icon-btn.active-fast {
@@ -92,10 +130,10 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--panel-bg);
   border-radius: 12px;
   padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
   -webkit-app-region: drag;
 }
 
@@ -119,17 +157,17 @@ html, body {
 .next-label,
 .hold-label {
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--label-color);
   text-align: center;
   letter-spacing: 1px;
 }
 
 .next-wrap,
 .hold-wrap {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--panel-bg);
   border-radius: 10px;
   padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -144,10 +182,10 @@ html, body {
 }
 
 .info-box {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--panel-bg);
   border-radius: 10px;
   padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -161,11 +199,11 @@ html, body {
 }
 
 .info-key {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--label-color);
 }
 
 .info-val {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--val-color);
   font-weight: bold;
 }
 

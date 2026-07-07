@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setClickThrough: (on) => ipcRenderer.invoke('set-click-through', on),
   setTitle: (t) => ipcRenderer.invoke('set-title', t),
   setAlwaysOnTop: (on) => ipcRenderer.invoke('set-always-on-top', on),
+  snapTop: () => ipcRenderer.invoke('snap-top'),
   setVisible: (v) => ipcRenderer.invoke('set-visible', v),
   toggleBoss: () => ipcRenderer.invoke('toggle-boss'),
   applyGlobalHotkeys: (hk) => ipcRenderer.invoke('apply-global-hotkeys', hk),
