@@ -1,12 +1,12 @@
 {
   "name": "tetris-widget",
-  "version": "1.0.0",
-  "description": "像素风俄罗斯方块桌面悬浮小程序（支持启发式 AI）",
+  "version": "1.1.0",
+  "description": "像素风俄罗斯方块桌面悬浮小程序（支持启发式 AI、本地大逃杀对战、摸鱼/特效模式）",
   "main": "main.js",
   "author": "Kimi User",
   "scripts": {
     "start": "electron .",
-    "pack": "electron-packager . 俄罗斯方块 --platform=win32 --arch=x64 --out=release/app --overwrite --icon=icon.ico --app-version=1.0.0 --ignore=\"(release|verify_shots|test|tools|\\.git|\\.github)\"",
+    "pack": "electron-packager . 俄罗斯方块 --platform=win32 --arch=x64 --out=release/app --overwrite --icon=icon.ico --app-version=1.1.0 --ignore=\"(release|verify_shots|test|tools|\\.git|\\.github)\"",
     "build": "npm run pack && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win portable --prepackaged \"release/app/俄罗斯方块-win32-x64\"",
     "test": "node test/core.test.js && node test/ai.test.js",
     "bench": "node benchmark_ai.js",

@@ -1,9 +1,9 @@
 # 俄罗斯方块桌面悬浮小程序（增强版）
 
-一个 Electron 桌面悬浮俄罗斯方块小程序（无边框 / 透明 / 置顶），带启发式 AI 自动演示。
+一个 Electron 桌面悬浮俄罗斯方块小程序（无边框 / 透明 / 置顶），带启发式 AI 自动演示、本地 AI 大逃杀对战、程序生成音乐特效。
 本仓库是在 `hamletzhang/tetris-widget` 基础上的增强 fork，目标是**手感不丢、AI 更聪明、能摸鱼、玩法更丰富**。fork 来源与许可见 [NOTICE.md](NOTICE.md)。
 
-> 改造分 Phase 推进，**Phase 1（手感）、Phase 2（AI）、Phase 3（隐身/摸鱼）、Phase 4（趣味）已全部完成**。审计与进度见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
+> 改造分 Phase 推进，**Phase 1（手感）、Phase 2（AI）、Phase 3（隐身/摸鱼）、Phase 4（趣味）、Phase 5（摸鱼升级 + 大逃杀对战 + 特效模式）已全部完成**。审计与进度见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 已实现（Phase 1）
 
@@ -29,7 +29,7 @@
 | 暂存 (Hold) | C / Shift |
 | 暂停 / 继续 | P / Esc |
 
-顶部按钮：`AI`（手动 → AI → AI+ 循环）、`⊡` 切换棋盘尺寸、`⚡` 切换基础速度、`▶/⏸` 开始暂停、`↻` 重开、`×` 退出。
+顶部按钮：`AI`（手动 → AI → AI+ 循环）、`⊡` 切换棋盘尺寸、`⚡` 切换基础速度、`▶/⏸` 开始暂停、`↻` 重开、`🐟` 摸鱼模式、`🎵` 特效模式、`⚙` 设置、`×` 退出。
 窗口可拖动（拖容器空白处），位置自动记忆。
 
 ### 手感参数（持久化，默认值）
@@ -82,49 +82,86 @@ AI 模式下游戏结束 5 秒后自动重开（适合当桌面演示）。按 *
 
 | 功能 | 默认热键 |
 |------|---------|
-| 老板键（隐藏 + 伪装） | `Ctrl+Alt+B` |
+| 老板键（隐藏 + 伪装成 VS Code） | `Ctrl+Alt+B` |
 | 显示 / 隐藏 | `Ctrl+Alt+H` |
 | 鼠标穿透 | `Ctrl+Alt+T` |
 | Mini 模式 | `Ctrl+Alt+M` |
+| **瞬间消失**（不弹伪装页，直接隐藏） | 小键盘 **1**（`num1`，需开 NumLock） |
 
 ## 玩法 / 趣味（Phase 4）
 
-- **游戏模式**（设置面板「游戏模式」切换）：马拉松、Sprint40（消 40 行计时）、Ultra（2 分钟刷分）、Zen（不会结束）、Cheese（清脏行求生）、每日挑战（按日期种子，每天同一套方块顺序）。
+- **游戏模式**（设置面板「游戏模式」切换）：马拉松、Sprint40（消 40 行计时）、Ultra（2 分钟刷分）、Zen（不会结束）、Cheese（清脏行求生）、每日挑战（按日期种子，每天同一套方块顺序）、**大逃杀**（见 Phase 5）。
 - **本地排行榜**：各模式独立记录最佳（分数 / 时间 / 行数），持久化，显示在信息栏「最佳」。
-- **主题**：经典 / 极简 / 霓虹 / 马卡龙 四套配色，即时切换（连已落方块一起换色）；可经设置导入/导出自定义配色。
+- **主题**：经典 / 极简 / 霓虹 / 马卡龙 / 摸鱼 五套配色，即时切换（连已落方块一起换色）；可经设置导入/导出自定义配色。
 - **手感反馈（juice）**：消行震屏 + 闪光 + 粒子、升级闪光、消行类型提示（SINGLE/TETRIS/T-SPIN/B2B/COMBO）。克制，不糊脸。
 - **音效**：WebAudio 合成（无版权素材），**默认静音**，设置里开。
-- **成就**：8 个（首次 Tetris / T-Spin、5 连击、10 级、百行、Sprint 破 60 秒、完成 Ultra、3 连难度消除），解锁有提示并持久化，设置面板可查看。
+- **成就**：9 个（首次 Tetris / T-Spin、5 连击、10 级、百行、Sprint 破 60 秒、完成 Ultra、3 连难度消除、大逃杀吃鸡），解锁有提示并持久化，设置面板可查看。
 
-> 联机对战 / 在线排行按需求不做；分屏 vs-AI 与回放录制按 ROI 推迟（见 KNOWN_ISSUES）。
+> 在线联机对战按需求不做（见下方大逃杀模式的本地方案）；分屏 vs-AI 与回放录制按 ROI 推迟（见 KNOWN_ISSUES）。
+
+## 摸鱼升级 + 大逃杀对战 + 特效模式（Phase 5）
+
+### 🐟 摸鱼模式
+
+一键把整个悬浮面板伪装成一块不起眼的浅色面板：
+
+- 配色对齐 **Claude Desktop** 浅色界面（暖米白底 `#faf9f5` + 低对比中性色块），远看不像在打游戏。
+- 自动把窗口**贴到屏幕最顶端**并强制**置顶**显示。
+- 顶栏 `🐟` 按钮一键切换，会记住切换前的主题，再点一次还原。
+
+### ⚔️ 大逃杀对战模式（`大逃杀`）
+
+参考《俄罗斯方块 99》做的**本地版**大逃杀——不联网、不用注册账号，纯本地模拟：
+
+- **9 个 AI 机器人对手**同场混战（4 弱 / 4 普通 / 1 变态难度），棋盘各自独立、互不干扰。
+- 你消 2/3/4 行会随机炸飞一个还活着的对手（送 1/2/4 行乱序垃圾行）；对手消行同样会反过来炸你。
+- 侧边信息栏实时显示「存活 N/9」和最近一条出局播报。
+- 熬到最后吃鸡解锁「大逃杀冠军」成就；出局会显示当场排名。
+
+机器人的落子决策直接复用与真人对局同一套 El-Tetris 启发式引擎（`renderer/ai.js`），不是另写的简化 AI。
+
+### 🎵 特效模式
+
+参考《俄罗斯方块效应》做的"操作即演出"——纯 Web Audio 程序生成，**不含任何外部音乐文件**：
+
+- **每一关一套独立配色 + 调式**：8 套预设配色（黎明/热带/霓虹都市/深海/熔岩/极光/紫夜/金昼），每套各带一个根音和音阶，按等级轮换。
+- 背景有一层低音量氛围琶音，节奏跟随当前下落速度换算出的 BPM。
+- 消行 / Tetris / 锁定 / 升级音效从当前调式实时取音，并随连击数级联升高音高——**零输入延迟**，不做"对齐节拍"式的处理以免拖慢手感。
+- 和摸鱼模式互不冲突，可以同时开。
 
 ## 构建与运行
 
 ```bash
 npm install        # 安装依赖（Electron）
 npm start          # 开发运行
-npm run build      # 打包 → 单文件便携版 release/俄罗斯方块-1.0.0.exe
+npm run build      # 打包 → 单文件便携版 release/俄罗斯方块-1.1.0.exe
 npm test           # 引擎单元测试（node 纯逻辑，43 条断言）
 npm run bench      # AI 策略基准对比
 npm run verify     # 离屏加载真实渲染器并截图验证（产出 verify_shots/）
 ```
 
-- 产物 **`release/俄罗斯方块-1.0.0.exe` 是单文件便携版**，双击即玩、免安装、无需 Node/npm。
+想快速用起来又不想每次开终端 `npm start`：给项目目录下的 `node_modules\electron\dist\electron.exe` 建一个桌面快捷方式，参数填项目根目录路径即可，双击直接开（GUI 子系统程序，不会像批处理那样闪一下黑框）。
+
+- 产物 **`release/俄罗斯方块-1.1.0.exe` 是单文件便携版**，双击即玩、免安装、无需 Node/npm。
 - `npm run build` 分两步（已串好）：先用 `@electron/packager` 产出未打包应用（`npm run pack`，不触发 winCodeSign），再用 electron-builder `--prepackaged` 包成单文件便携版、并跳过签名（`CSC_IDENTITY_AUTO_DISCOVERY=false`）。这样在「无管理员 / 未开开发者模式」的 Windows 上也能一键构建——绕开 electron-builder 解压 winCodeSign 内 macOS 符号链接时的权限报错（`客户端没有所需的特权`）。
 - 要求 Node ≥ 18。主攻平台：Windows。
 
 ## 项目结构
 
 ```
-main.js              Electron 主进程（窗口 / IPC / 配置持久化）
+main.js              Electron 主进程（窗口 / IPC / 配置持久化 / 全局热键 / 摸鱼贴顶）
 preload.js           contextBridge（electronAPI）
 renderer/
   index.html         DOM：棋盘 + Hold/Next 预览 + 信息面板 + 顶部按钮
-  style.css          悬浮窗样式
-  tetris.js          全部游戏逻辑（同构：纯逻辑可被 node require 做单测）
+  style.css          悬浮窗样式（CSS 变量驱动，配合摸鱼模式整体换色）
+  tetris.js          全部游戏逻辑（同构：纯逻辑可被 node require 做单测；含大逃杀对战 + 特效音乐引擎）
+  ai.js              共享 El-Tetris 启发式引擎（纯函数，真人 AI 与大逃杀机器人共用）
+  disguise.html      老板键伪装页（假装成 VS Code）
 benchmark_ai.js      无 UI 的 AI 策略基准台
 test/core.test.js    引擎纯逻辑单元测试
+test/ai.test.js      AI 引擎单元测试
 tools/verify_visual.js  Electron 截图/断言验证脚本
+tools/verify_window.js  窗口行为验证脚本
 ARCHITECTURE.md      架构说明
 KNOWN_ISSUES.md      问题审计与修复进度
 NOTICE.md            fork 来源与许可说明
