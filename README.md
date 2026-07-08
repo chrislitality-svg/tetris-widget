@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/banner.svg" alt="tetris-widget banner" width="100%"></p>
+
 # tetris-widget · 桌面悬浮俄罗斯方块 🎮
 
 > **A frameless, always‑on‑top desktop Tetris — with a 9‑bot battle royale and generative music.**
