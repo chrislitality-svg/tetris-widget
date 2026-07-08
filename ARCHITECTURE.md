@@ -56,7 +56,7 @@ renderer/
 - `benchmark_ai.js`：独立 Node 脚本，含 `SeededRandom`、**7-bag `BagRandomizer`**（仅基准用，未进游戏）、`GameEngine`、7 种策略与 100 局批测。是 Phase 2 调参/对比的现成基础设施。
 
 ### 6. 配置 / 常量 — `renderer/tetris.js` 顶部（L1–72）
-- `CELL_PX=20`、`CANVAS_SIZES`（small/medium/large）、`SPEEDS`（slow/normal/fast）、`PIECE_COLORS`、`SHAPES`（7 块各 4 旋转态）、`PIECE_TYPES`。
+- `CELL_PX=20`、`CANVAS_SIZES`（small/medium/large）、`SPEEDS`（slow/normal/fast）、`SHAPES`（7 块各 4 旋转态）、`PIECE_TYPES`、`THEMES`（配色，含每种方块类型的颜色，取代了早期的 `PIECE_COLORS`）。
 
 ### 7. 窗口 / 桌面化 — `main.js`
 - `BrowserWindow`：`frame:false`、`transparent:true`、`alwaysOnTop:true`、`skipTaskbar:true`、`resizable:false`。**已是无边框透明置顶悬浮窗** —— Phase 3 隐身功能的地基已在。

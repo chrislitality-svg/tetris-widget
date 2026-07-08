@@ -29,6 +29,13 @@ html, body {
   --accent-bg: rgba(126, 231, 135, 0.3);
   --accent-text: #d1fae5;
   --accent-glow: rgba(126, 231, 135, 0.2);
+  --sp-bg: rgba(18, 18, 24, 0.985);
+  --sp-text: #fff;
+  --sp-row-text: rgba(255, 255, 255, 0.82);
+  --sp-label-muted: rgba(255, 255, 255, 0.4);
+  --sp-input-bg: rgba(255, 255, 255, 0.08);
+  --sp-input-border: rgba(255, 255, 255, 0.12);
+  --sp-option-bg: #1e1e26;
 }
 
 /* 摸鱼模式：整体配色对齐 Claude Desktop（暖米白底 + 低对比中性色) */
@@ -48,6 +55,13 @@ html, body {
   --accent-bg: rgba(217, 119, 87, 0.22);
   --accent-text: #a34e30;
   --accent-glow: rgba(217, 119, 87, 0.18);
+  --sp-bg: rgba(250, 249, 245, 0.98);
+  --sp-text: #141413;
+  --sp-row-text: rgba(20, 20, 19, 0.82);
+  --sp-label-muted: rgba(20, 20, 19, 0.4);
+  --sp-input-bg: rgba(20, 20, 19, 0.06);
+  --sp-input-border: rgba(20, 20, 19, 0.16);
+  --sp-option-bg: #f3f1ea;
 }
 
 .widget-container {
@@ -77,8 +91,16 @@ html, body {
 .top-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 6px;
   -webkit-app-region: no-drag;
+}
+
+.btn-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--wc-border);
+  flex-shrink: 0;
 }
 
 .icon-btn {
@@ -211,18 +233,20 @@ html, body {
 .settings-panel {
   position: absolute;
   inset: 0;
-  background: rgba(18, 18, 24, 0.985);
+  background: var(--sp-bg);
   border-radius: 20px;
   padding: 8px 12px 14px;
   overflow-y: auto;
   z-index: 50;
   -webkit-app-region: no-drag;
   font-size: 11px;
+  transition: background 0.2s, color 0.2s;
 }
 .settings-panel.hidden { display: none; }
 .sp-head {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px;
+  font-size: 13px; font-weight: bold; color: var(--sp-text); margin-bottom: 4px;
+  position: sticky; top: 0; background: var(--sp-bg); z-index: 1; padding-bottom: 2px;
 }
 .sp-sec {
   color: rgba(126, 231, 135, 0.85); font-size: 10px; letter-spacing: .5px;
@@ -230,20 +254,20 @@ html, body {
 }
 .sp-row {
   display: flex; justify-content: space-between; align-items: center;
-  gap: 8px; padding: 3px 0; color: rgba(255, 255, 255, 0.82);
+  gap: 8px; padding: 3px 0; color: var(--sp-row-text);
 }
 .sp-row span { white-space: nowrap; }
-.sp-row i { color: rgba(255, 255, 255, 0.4); font-style: normal; }
+.sp-row i { color: var(--sp-label-muted); font-style: normal; }
 .sp-row input[type=range] { flex: 1; max-width: 150px; accent-color: #60a5fa; }
 .sp-row input[type=checkbox] { accent-color: #60a5fa; width: 14px; height: 14px; }
 .sp-row input[type=text],
 .sp-row select {
-  flex: 1; max-width: 165px; background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; border-radius: 6px;
+  flex: 1; max-width: 165px; background: var(--sp-input-bg);
+  border: 1px solid var(--sp-input-border); color: var(--sp-text); border-radius: 6px;
   padding: 2px 6px; font-size: 11px;
 }
 .sp-row select { max-width: 120px; }
-.sp-row select option { background: #1e1e26; }
+.sp-row select option { background: var(--sp-option-bg); color: var(--sp-text); }
 .sp-btn {
   margin-top: 6px; padding: 5px 8px; background: rgba(96, 165, 250, 0.25);
   color: #bfdbfe; border: none; border-radius: 8px; cursor: pointer; font-size: 11px;
@@ -252,21 +276,21 @@ html, body {
 .sp-actions { display: flex; gap: 6px; }
 .sp-actions .sp-btn { flex: 1; }
 .sp-modes { display: flex; flex-wrap: wrap; gap: 5px; }
-.mode-btn { background: rgba(255, 255, 255, 0.08); border: none; color: rgba(255, 255, 255, 0.8); border-radius: 7px; padding: 4px 9px; cursor: pointer; font-size: 11px; }
-.mode-btn:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.mode-btn { background: var(--sp-input-bg); border: none; color: var(--sp-row-text); border-radius: 7px; padding: 4px 9px; cursor: pointer; font-size: 11px; }
+.mode-btn:hover { background: var(--sp-input-border); color: var(--sp-text); }
 .mode-btn.active { background: rgba(96, 165, 250, 0.42); color: #fff; }
-.ach-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; font-size: 10px; color: rgba(255, 255, 255, 0.4); }
+.ach-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; font-size: 10px; color: var(--sp-label-muted); }
 .ach-row.got { color: rgba(253, 230, 138, 0.95); }
 .ach-row .ach-name { white-space: nowrap; }
-.ach-row .ach-desc { color: rgba(255, 255, 255, 0.32); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ach-row .ach-desc { color: var(--sp-label-muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #ioText {
-  width: 100%; background: rgba(0, 0, 0, 0.4); color: #cdd6e6;
-  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px;
+  width: 100%; background: var(--sp-input-bg); color: var(--sp-text);
+  border: 1px solid var(--sp-input-border); border-radius: 6px;
   font-size: 10px; font-family: monospace; resize: vertical; padding: 4px;
 }
 .kb-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; gap: 8px; }
-.kb-row .kb-name { color: rgba(255, 255, 255, 0.82); white-space: nowrap; }
-.kb-row .kb-keys { flex: 1; color: rgba(255, 255, 255, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 10px; text-align: right; }
-.kb-row .kb-btn { background: rgba(255, 255, 255, 0.1); border: none; color: #fff; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 10px; }
-.kb-row .kb-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.kb-row .kb-name { color: var(--sp-row-text); white-space: nowrap; }
+.kb-row .kb-keys { flex: 1; color: var(--sp-label-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 10px; text-align: right; }
+.kb-row .kb-btn { background: var(--sp-input-bg); border: none; color: var(--sp-text); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 10px; }
+.kb-row .kb-btn:hover { background: var(--sp-input-border); }
 .kb-row .kb-btn.capturing { background: rgba(251, 191, 36, 0.55); color: #1a1a1a; }

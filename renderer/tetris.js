@@ -13,16 +13,6 @@ const SPEEDS = {
 };
 const SPEED_LIST = ['slow', 'normal', 'fast'];
 
-const PIECE_COLORS = {
-  I: '#36d1dc',
-  O: '#fbbf24',
-  T: '#a78bfa',
-  S: '#4ade80',
-  Z: '#f87171',
-  J: '#60a5fa',
-  L: '#fb923c'
-};
-
 // SRS-standard piece frames. State index: 0=spawn, 1=R (CW), 2=180, 3=L (CCW).
 // (These match the Tetris Guideline / SRS orientations; combined with the kick
 //  tables below they reproduce true wall/floor kicks and T-spins.)
@@ -321,7 +311,6 @@ let lockTimer = 0;
 let lockResets = 0;
 let lowestRow = 0;
 let lastMoveWasRotation = false;
-let lastKickIndex = 0;
 
 // input (DAS/ARR/soft)
 let heldLeft = false, heldRight = false, heldDown = false;
@@ -403,7 +392,7 @@ function init() {
     settings.globalHotkeys = Object.assign({}, DEFAULT_SETTINGS.globalHotkeys, settings.globalHotkeys || {});
     applyTheme(settings.theme);
     if (settings.effectMode) { applyEffectPalette(); ensureEffectMusic(); }
-    updateEffectBtn();
+    setBtnActive('effectBtn', settings.effectMode);
     records = config.records || {};
     unlockedAch = new Set(config.achievements || []);
     mode = MODES[config.mode] ? config.mode : 'marathon';
@@ -829,7 +818,6 @@ function rotate(dir) {
   currentPiece.row = res.row;
   currentPiece.col = res.col;
   lastMoveWasRotation = true;
-  lastKickIndex = res.kickIndex;
   afterMove(false);
   playSound('rotate');
   return true;
@@ -869,17 +857,21 @@ function holdPiece() {
   playSound('hold');
 }
 
-function lockPiece() {
-  if (!currentPiece) return;
-  const shape = getShape(currentPiece);
+// 把 shape 矩阵戳进 board（跳过空格、越界裁剪）；玩家棋盘落子和机器人棋盘落子共用。
+function stampShape(board, shape, row, col, value) {
   for (let r = 0; r < shape.length; r++) {
     for (let c = 0; c < shape[r].length; c++) {
       if (!shape[r][c]) continue;
-      const br = currentPiece.row + r;
-      const bc = currentPiece.col + c;
-      if (br >= 0 && br < board.length && bc >= 0 && bc < board[0].length) board[br][bc] = currentPiece.type;
+      const br = row + r, bc = col + c;
+      if (br >= 0 && br < board.length && bc >= 0 && bc < board[0].length) board[br][bc] = value;
     }
   }
+  return board;
+}
+
+function lockPiece() {
+  if (!currentPiece) return;
+  stampShape(board, getShape(currentPiece), currentPiece.row, currentPiece.col, currentPiece.type);
 
   const tSpin = detectTSpin(board, currentPiece, lastMoveWasRotation);
   const fullRows = getFullRows(board);
@@ -1019,7 +1011,7 @@ function applyTheme(key) {
   settings.theme = THEMES[key] ? key : 'classic';
   const c = document.querySelector('.widget-container');
   if (c) c.classList.toggle('moyu', settings.theme === 'moyu');
-  updateMoyuBtn();
+  setBtnActive('moyuBtn', settings.theme === 'moyu');
   // Entering 摸鱼模式: pin to the top of the screen and force always-on-top.
   if (settings.theme === 'moyu' && prevTheme !== 'moyu') {
     settings.alwaysOnTop = true;
@@ -1028,11 +1020,6 @@ function applyTheme(key) {
       if (window.electronAPI.snapTop) window.electronAPI.snapTop().catch(() => {});
     }
   }
-}
-
-function updateMoyuBtn() {
-  const btn = document.getElementById('moyuBtn');
-  if (btn) btn.classList.toggle('active', settings.theme === 'moyu');
 }
 
 // 摸鱼模式一键开关：进入时记住原配色，退出时还原。
@@ -1333,8 +1320,9 @@ function closeSettings() {
 
 function prettyKey(k) { return k === ' ' ? 'Space' : k; }
 
+function g(id) { return document.getElementById(id); }
+
 function syncSettingsUI() {
-  const g = id => document.getElementById(id);
   if (!g('optOpacity')) return;
   g('optOpacity').value = settings.opacity;
   g('lblOpacity').textContent = Math.round(settings.opacity * 100) + '%';
@@ -1392,7 +1380,6 @@ function captureKeybind(action, btn, keysEl) {
 }
 
 function bindSettingsPanel() {
-  const g = id => document.getElementById(id);
   if (!g('settingsPanel')) return;
   g('spClose').addEventListener('click', closeSettings);
   g('optOpacity').addEventListener('input', e => {
@@ -1575,9 +1562,10 @@ function applyEffectPalette() {
   activeTheme = paletteForLevel(level);
 }
 
-function updateEffectBtn() {
-  const btn = document.getElementById('effectBtn');
-  if (btn) btn.classList.toggle('active', !!settings.effectMode);
+// 顶栏 toggle 按钮共用：按 id 找按钮，切换 active 高亮态。
+function setBtnActive(id, cond) {
+  const btn = document.getElementById(id);
+  if (btn) btn.classList.toggle('active', !!cond);
 }
 
 function toggleEffectMode() {
@@ -1589,7 +1577,7 @@ function toggleEffectMode() {
     applyTheme(settings.theme); // 交回给普通主题系统（含摸鱼模式的 .moyu class）
     stopEffectMusic();
   }
-  updateEffectBtn();
+  setBtnActive('effectBtn', settings.effectMode);
   draw();
   saveConfig();
 }
@@ -1700,14 +1688,23 @@ function setupMode() {
   if (cfg.battle) initBattle();
 }
 
-function addGarbageRows(n) {
-  const info = CANVAS_SIZES[sizeKey];
+// 生成一行带随机缺口的垃圾行（缺口保证这行本身可被消掉）。
+function makeGarbageRow(width) {
+  const row = new Array(width).fill('G');
+  row[Math.floor(Math.random() * width)] = null;
+  return row;
+}
+
+// 往任意棋盘底部推入 n 行垃圾行（栈顶被顶出）；玩家棋盘和机器人棋盘共用。
+function pushGarbageRows(targetBoard, width, n) {
   for (let i = 0; i < n; i++) {
-    const row = new Array(info.width).fill('G');
-    row[Math.floor(Math.random() * info.width)] = null; // one gap so the row is clearable
-    board.shift();   // push the stack up
-    board.push(row); // garbage rises from the bottom
+    targetBoard.shift();
+    targetBoard.push(makeGarbageRow(width));
   }
+}
+
+function addGarbageRows(n) {
+  pushGarbageRows(board, CANVAS_SIZES[sizeKey].width, n);
 }
 
 function countGarbageRows() {
@@ -1742,16 +1739,6 @@ function initBattle() {
 }
 
 // 与 ai.js 内部 stamp() 同构，只是把布尔值换成方块类型字母，方便复用 TetrisAI.clearRows()。
-function botStamp(board, shape, row, col, type) {
-  for (let r = 0; r < shape.length; r++) {
-    for (let c = 0; c < shape[r].length; c++) {
-      if (!shape[r][c]) continue;
-      const br = row + r, bc = col + c;
-      if (br >= 0 && br < board.length && bc >= 0 && bc < board[0].length) board[br][bc] = type;
-    }
-  }
-  return board;
-}
 
 function botTopOut(board) {
   return board[0].some(c => c != null) || board[1].some(c => c != null);
@@ -1764,12 +1751,7 @@ function eliminateBot(bot) {
 }
 
 function addBotGarbage(bot, n) {
-  for (let i = 0; i < n; i++) {
-    const row = new Array(10).fill('G');
-    row[Math.floor(Math.random() * 10)] = null;
-    bot.board.shift();
-    bot.board.push(row);
-  }
+  pushGarbageRows(bot.board, 10, n);
   if (botTopOut(bot.board)) eliminateBot(bot);
 }
 
@@ -1812,7 +1794,7 @@ function botDecide(bot) {
   const shape = SHAPES[bot.nextType][res.rotation];
   const row = TetrisAI.landingRow(bot.board, shape, res.col);
   if (row == null) { eliminateBot(bot); return; }
-  botStamp(bot.board, shape, row, res.col, bot.nextType);
+  stampShape(bot.board, shape, row, res.col, bot.nextType);
   const { board: clearedBoard, cleared } = TetrisAI.clearRows(bot.board);
   bot.board = clearedBoard;
   bot.nextType = bot.bag.next();
@@ -1979,7 +1961,7 @@ function renderAchievements() {
 // ===================== 单测导出（node） =====================
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    SHAPES, PIECE_TYPES, PIECE_COLORS, JLSTZ_KICKS, I_KICKS, DEFAULT_SETTINGS,
+    SHAPES, PIECE_TYPES, JLSTZ_KICKS, I_KICKS, DEFAULT_SETTINGS,
     collidesAt, resolveRotation, getFullRows, dropDistance, bottomRowOf,
     detectTSpin, computeClearScore, BagRandomizer,
     MODES, formatTime, makeSeededRng
