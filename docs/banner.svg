@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="tw-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0b1a"/><stop offset="1" stop-color="#15122e"/>
+    </linearGradient>
+    <linearGradient id="tw-title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00E5FF"/><stop offset="0.5" stop-color="#7C4DFF"/><stop offset="1" stop-color="#FF4D9D"/>
+    </linearGradient>
+    <filter id="tw-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="tw-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0 H0 V32" stroke="#ffffff" stroke-width="1" opacity="0.05" fill="none"/>
+    </pattern>
+  </defs>
+  <rect width="1280" height="320" fill="url(#tw-bg)"/>
+  <rect width="1280" height="320" fill="url(#tw-grid)"/>
+
+  <!-- mini playfield with tetrominoes -->
+  <g transform="translate(96,52)" filter="url(#tw-glow)">
+    <!-- S (green) -->
+    <g fill="#43E97B"><rect x="52" y="0" width="30" height="30" rx="4"/><rect x="84" y="0" width="30" height="30" rx="4"/><rect x="20" y="32" width="30" height="30" rx="4"/><rect x="52" y="32" width="30" height="30" rx="4"/></g>
+    <!-- T (purple) -->
+    <g fill="#B14DFF"><rect x="116" y="64" width="30" height="30" rx="4"/><rect x="148" y="64" width="30" height="30" rx="4"/><rect x="180" y="64" width="30" height="30" rx="4"/><rect x="148" y="96" width="30" height="30" rx="4"/></g>
+    <!-- O (yellow) -->
+    <g fill="#FFE100"><rect x="20" y="96" width="30" height="30" rx="4"/><rect x="52" y="96" width="30" height="30" rx="4"/><rect x="20" y="128" width="30" height="30" rx="4"/><rect x="52" y="128" width="30" height="30" rx="4"/></g>
+    <!-- I (cyan) -->
+    <g fill="#00E5FF"><rect x="20" y="164" width="30" height="30" rx="4"/><rect x="52" y="164" width="30" height="30" rx="4"/><rect x="84" y="164" width="30" height="30" rx="4"/><rect x="116" y="164" width="30" height="30" rx="4"/></g>
+    <!-- L (orange) -->
+    <g fill="#FF9F1C"><rect x="148" y="132" width="30" height="30" rx="4"/><rect x="148" y="164" width="30" height="30" rx="4"/><rect x="180" y="164" width="30" height="30" rx="4"/></g>
+  </g>
+
+  <g transform="translate(360,0)">
+    <text x="0" y="138" font-size="72" font-weight="800" fill="url(#tw-title)" filter="url(#tw-glow)">tetris-widget</text>
+    <text x="4" y="184" font-size="26" fill="#D7D2FF" opacity="0.95">无边框 · 置顶 · 桌面悬浮俄罗斯方块，带 AI 大逃杀与程序生成音乐</text>
+    <text x="4" y="218" font-size="19" fill="#8E86C9">Frameless always-on-top Tetris · 9-bot battle royale · generative music</text>
+    <g font-size="17" font-weight="600">
+      <rect x="4" y="240" width="102" height="34" rx="17" fill="#00E5FF" opacity="0.14"/><text x="55" y="262" fill="#9BF3FF" text-anchor="middle">Electron</text>
+      <rect x="116" y="240" width="150" height="34" rx="17" fill="#B14DFF" opacity="0.16"/><text x="191" y="262" fill="#E3C6FF" text-anchor="middle">SRS + kick table</text>
+      <rect x="276" y="240" width="140" height="34" rx="17" fill="#FF4D9D" opacity="0.16"/><text x="346" y="262" fill="#FFC4E0" text-anchor="middle">battle royale</text>
+      <rect x="426" y="240" width="118" height="34" rx="17" fill="#FFE100" opacity="0.14"/><text x="485" y="262" fill="#FFF3A6" text-anchor="middle">T-spin</text>
+    </g>
+  </g>
+</svg>
