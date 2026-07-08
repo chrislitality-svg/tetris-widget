@@ -1,3 +1,26 @@
+# tetris-widget · 桌面悬浮俄罗斯方块 🎮
+
+> **A frameless, always‑on‑top desktop Tetris — with a 9‑bot battle royale and generative music.**
+> 无边框 / 透明 / 置顶的桌面悬浮俄罗斯方块，带 AI 大逃杀对战与程序生成音乐特效。
+
+[![Electron](https://img.shields.io/badge/Electron-desktop-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/docs/Web/JavaScript)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows-blue?logo=windows)](#)
+
+A tiny Tetris that floats on your desktop and plays like the real thing — then goes further with an AI that plays itself, a battle‑royale mode where 9 bots fight, and a generative‑music effects mode.
+
+## ✨ Highlights
+- 🎯 **Real feel** — full SRS rotation + official kick tables, lock delay, DAS/ARR, 7‑bag, hold, T‑spin scoring
+- 🤖 **Heuristic auto‑play AI** — watch the bot stack and clear
+- ⚔️ **Battle royale** — 9 bots fight it out, all sharing one pure‑function AI
+- 🎵 **Effects mode** — procedurally generated music + a per‑level palette & musical mode
+- 🐟 **"Slacking" mode** — blends into the desktop, top‑docked, hidden hotkey
+
+> Enhanced fork of `hamletzhang/tetris-widget` — attribution & license in [NOTICE.md](NOTICE.md).
+
+---
+
 # 俄罗斯方块桌面悬浮小程序（增强版）
 
 一个 Electron 桌面悬浮俄罗斯方块小程序（无边框 / 透明 / 置顶），带启发式 AI 自动演示、本地 AI 大逃杀对战、程序生成音乐特效。
