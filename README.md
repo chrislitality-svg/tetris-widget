@@ -54,7 +54,7 @@ A tiny Tetris that floats on your desktop and plays like the real thing — then
 | 暂存 (Hold) | C / Shift |
 | 暂停 / 继续 | P / Esc |
 
-顶部按钮：`AI`（手动 → AI → AI+ 循环）、`⊡` 切换棋盘尺寸、`⚡` 切换基础速度、`▶/⏸` 开始暂停、`↻` 重开、`🐟` 摸鱼模式、`🎵` 特效模式、`⚙` 设置、`×` 退出。
+顶部按钮：`AI`（手动 → 弱 → 普通 → 变态 循环）、`⊡` 切换棋盘尺寸、`⚡` 切换基础速度、`▶/⏸` 开始暂停、`↻` 重开、`🐟` 摸鱼模式、`🎵` 特效模式、`⚙` 设置、`×` 退出。
 窗口可拖动（拖容器空白处），位置自动记忆。
 
 ### 手感参数（持久化，默认值）
@@ -68,7 +68,7 @@ A tiny Tetris that floats on your desktop and plays like the real thing — then
 | Lock 重置上限 | 15 | 移动/旋转重置锁定的次数上限 |
 | 失焦自动暂停 | 开（仅手动模式） | AI 演示不受影响 |
 
-> 目前通过配置文件持久化；可视化的键位/手感设置面板计划在 Phase 3 提供。
+> 通过配置文件持久化，可视化设置面板见下方「隐身 / 摸鱼（Phase 3）」。
 
 ## AI（Phase 2 · 已强化）
 
